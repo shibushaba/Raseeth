@@ -200,6 +200,51 @@ npm run build
 npm run preview
 ```
 
+## Deploy to Vercel
+
+Raseeth is a Vite SPA. Vercel serves `dist/` and rewrites unknown paths to `index.html` (see `vercel.json`).
+
+### 1. Push the repo
+
+Ensure `main` is on GitHub (`origin`).
+
+### 2. Import in Vercel
+
+1. [vercel.com/new](https://vercel.com/new) → import **Raseeth**.
+2. Framework preset: **Vite** (auto-detected).
+3. Build command: `npm run build`
+4. Output directory: `dist`
+5. Node.js: **20.x** or newer
+
+### 3. Environment variables
+
+In Vercel → Project → **Settings** → **Environment Variables**, add for Production (and Preview if you want):
+
+| Name | Value |
+| --- | --- |
+| `VITE_SUPABASE_URL` | `https://YOUR_PROJECT.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Project **anon** / **public** key |
+
+Do **not** add `SUPABASE_SERVICE_ROLE_KEY` to Vercel.
+
+Redeploy after changing env vars (Vite inlines them at build time).
+
+### 4. Supabase Auth URLs
+
+In Supabase → **Authentication** → **URL configuration**:
+
+1. **Site URL**: your production URL, e.g. `https://your-app.vercel.app`
+2. **Redirect URLs** — add:
+   - `https://your-app.vercel.app/**`
+   - `https://*-your-team.vercel.app/**` (optional, for preview deployments)
+   - `http://localhost:5173/**` (local dev)
+
+### 5. Smoke test after deploy
+
+1. Open the Vercel URL → sign in
+2. Deep-link a route (e.g. `/inventory`) and refresh — should not 404
+3. Owner Overview / Salesman Sell / one test sale
+
 ## Backup (operations)
 
 Use Supabase project backups (Pro: daily; free tier: manual `pg_dump` / dashboard backup). Before a pilot go-live, take a fresh backup after migrations. Restore via Supabase dashboard or restore to a new project and re-point `VITE_SUPABASE_*`. No custom in-app backup in MVP.

@@ -1,0 +1,481 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react'
+import { Link } from 'react-router-dom'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { createSale, getProducts } from '@/data/api'
+import { queryKeys } from '@/data/query-keys'
+import {
+  productToCartSeed,
+  unitPriceForType,
+  type CartItem,
+} from '@/features/sales/cart'
+import { CartPanel } from '@/features/sales/components/CartPanel'
+import {
+  PaymentPanel,
+  buildPaymentsFromMode,
+  paymentStatus,
+  type PaymentMode,
+  type SplitPaymentRow,
+} from '@/features/sales/components/PaymentPanel'
+import { PosProductResults } from '@/features/sales/components/PosProductResults'
+import { localDayBounds } from '@/lib/datetime'
+import { logTechnicalError, toUserMessage } from '@/lib/errors'
+import { formatMoney, sumCartTotal, toMoneyString } from '@/lib/money'
+import { PAYMENT_METHOD_LABEL } from '@/lib/payment-labels'
+import type { PaymentMethod, PriceType, Product, Sale } from '@/types/database'
+import { createSaleSchema } from '@/validation/schemas'
+
+async function invalidateAfterSale(
+  queryClient: ReturnType<typeof useQueryClient>,
+) {
+  const { dayKey } = localDayBounds()
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.products.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.sales.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.inventoryHistory.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.inventory.summary }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.sales.todaySummary(dayKey),
+    }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.business.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity.all }),
+  ])
+}
+
+type CompletedSale = Sale & {
+  payments: Array<{ method: PaymentMethod; amount: number }>
+}
+
+export function PosScreen() {
+  const queryClient = useQueryClient()
+  const searchRef = useRef<HTMLInputElement>(null)
+  const submittingRef = useRef(false)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search.trim())
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [completed, setCompleted] = useState<CompletedSale | null>(null)
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH')
+  const [splitRows, setSplitRows] = useState<SplitPaymentRow[]>([
+    { id: '1', method: 'CASH', amount: '' },
+    { id: '2', method: 'UPI', amount: '' },
+  ])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.matchMedia('(min-width: 640px)').matches) {
+      searchRef.current?.focus()
+    }
+  }, [])
+
+  const productsQuery = useQuery({
+    queryKey: queryKeys.products.list(deferredSearch),
+    queryFn: () => getProducts(deferredSearch),
+    enabled: deferredSearch.length > 0,
+  })
+
+  const total = useMemo(
+    () =>
+      sumCartTotal(
+        cart.map((item) => ({
+          unit_price: unitPriceForType(item),
+          quantity: item.quantity,
+        })),
+      ),
+    [cart],
+  )
+
+  const cartInvalid = cart.some(
+    (item) =>
+      item.quantity < 1 ||
+      item.quantity > item.available_stock ||
+      (item.price_type === 'CUSTOM' && unitPriceForType(item) <= 0),
+  )
+
+  const payCheck = paymentStatus(paymentMode, total, splitRows)
+
+  const mutation = useMutation({
+    mutationFn: createSale,
+    onSuccess: async (sale, variables) => {
+      setCompleted({
+        ...sale,
+        payments: variables.payments.map((p) => ({
+          method: p.method,
+          amount: p.amount,
+        })),
+      })
+      setCart([])
+      setSearch('')
+      setError(null)
+      setPaymentMode('CASH')
+      setSplitRows([
+        { id: '1', method: 'CASH', amount: '' },
+        { id: '2', method: 'UPI', amount: '' },
+      ])
+      await invalidateAfterSale(queryClient)
+    },
+    onError: (err) => {
+      logTechnicalError('createSale', err)
+      setError(
+        toUserMessage(
+          err,
+          'Unable to complete payment. Please try again.',
+        ),
+      )
+    },
+    onSettled: () => {
+      submittingRef.current = false
+    },
+  })
+
+  const canComplete =
+    cart.length > 0 && !cartInvalid && payCheck.valid && !mutation.isPending
+
+  function addProduct(product: Product) {
+    setError(null)
+    setCart((prev) => {
+      const existing = prev.find((i) => i.product_id === product.id)
+      if (existing) {
+        const nextQty = existing.quantity + 1
+        if (nextQty > product.current_quantity) {
+          setError(
+            `Not enough ${product.name} in stock. Available: ${product.current_quantity}.`,
+          )
+          return prev
+        }
+        return prev.map((i) =>
+          i.product_id === product.id
+            ? {
+                ...i,
+                quantity: nextQty,
+                available_stock: product.current_quantity,
+                retail_price: productToCartSeed(product).retail_price,
+                wholesale_price: productToCartSeed(product).wholesale_price,
+              }
+            : i,
+        )
+      }
+
+      if (product.current_quantity <= 0) {
+        setError(`${product.name} is out of stock.`)
+        return prev
+      }
+
+      return [
+        ...prev,
+        {
+          ...productToCartSeed(product),
+          quantity: 1,
+        },
+      ]
+    })
+  }
+
+  function addFromSearchKeyboard() {
+    const products = productsQuery.data ?? []
+    if (products.length === 0 || productsQuery.isFetching) return
+
+    const needle = deferredSearch.toLowerCase()
+    const exactCode = products.find(
+      (p) => p.product_code.toLowerCase() === needle,
+    )
+    const inStock =
+      exactCode ??
+      products.find((p) => p.current_quantity > 0) ??
+      products[0]
+
+    if (!inStock) return
+    addProduct(inStock)
+    setSearch('')
+  }
+
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Escape') {
+      setSearch('')
+      return
+    }
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    addFromSearchKeyboard()
+  }
+
+  function completeSale() {
+    if (submittingRef.current || mutation.isPending) return
+    setError(null)
+
+    for (const item of cart) {
+      if (item.quantity > item.available_stock) {
+        setError(
+          `Not enough ${item.name} in stock. Available: ${item.available_stock}. Requested: ${item.quantity}.`,
+        )
+        return
+      }
+    }
+
+    const status = paymentStatus(paymentMode, total, splitRows)
+    if (!status.valid) {
+      setError(status.message)
+      return
+    }
+
+    const payload = {
+      items: cart.map((item) => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: Number(toMoneyString(unitPriceForType(item))),
+        price_type: item.price_type,
+      })),
+      payments: buildPaymentsFromMode(paymentMode, total, splitRows).map(
+        (p) => ({
+          method: p.method,
+          amount: Number(toMoneyString(p.amount)),
+        }),
+      ),
+    }
+
+    const parsed = createSaleSchema.safeParse(payload)
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Payment is invalid.')
+      return
+    }
+
+    submittingRef.current = true
+    mutation.mutate(parsed.data)
+  }
+
+  if (completed) {
+    const paid = completed.payments.reduce((a, p) => a + p.amount, 0)
+    return (
+      <div className="panel max-w-md px-5 py-6">
+        <p className="app-kicker">Sale completed</p>
+        <p className="mt-2 text-xl font-semibold tracking-tight">
+          {completed.sale_number}
+        </p>
+        <div className="mt-5 border-t border-border pt-4">
+          <p className="app-kicker">Total</p>
+          <p className="mt-1 text-xl tabular-nums font-semibold">
+            {formatMoney(completed.total_amount)}
+          </p>
+        </div>
+        <div className="mt-4 border-t border-border pt-4">
+          <p className="app-kicker">Payment</p>
+          <ul className="mt-2 space-y-1 text-sm">
+            {completed.payments.map((p, i) => (
+              <li
+                key={`${p.method}-${i}`}
+                className="flex justify-between gap-4"
+              >
+                <span>{PAYMENT_METHOD_LABEL[p.method]}</span>
+                <span className="tabular-nums">{formatMoney(p.amount)}</span>
+              </li>
+            ))}
+            <li className="flex justify-between gap-4 border-t border-border pt-2 font-medium">
+              <span>Paid</span>
+              <span className="tabular-nums">{formatMoney(paid)}</span>
+            </li>
+          </ul>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            onClick={() => {
+              setCompleted(null)
+              mutation.reset()
+              queueMicrotask(() => searchRef.current?.focus())
+            }}
+          >
+            New Sale
+          </Button>
+          <Link
+            to={`/sales/${completed.id}`}
+            className="inline-flex h-11 items-center rounded-sm border border-border-strong bg-surface px-4 text-sm font-medium hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+          >
+            View Sale
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const checkoutBlock =
+    cart.length > 0 ? (
+      <section className="space-y-5 border-t border-border pt-5 lg:border-t-0 lg:pt-0">
+        <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
+          <p className="app-kicker">Total</p>
+          <p className="text-xl tabular-nums font-semibold">
+            {formatMoney(total)}
+          </p>
+        </div>
+
+        <PaymentPanel
+          saleTotal={total}
+          mode={paymentMode}
+          onModeChange={setPaymentMode}
+          splitRows={splitRows}
+          onSplitRowsChange={setSplitRows}
+          showValidation={false}
+        />
+
+        {error ? (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        ) : payCheck.message && !payCheck.valid ? (
+          <p className="text-sm text-danger" role="alert">
+            {payCheck.message}
+          </p>
+        ) : cartInvalid ? (
+          <p className="text-sm text-danger" role="alert">
+            Fix cart quantities or custom prices before completing.
+          </p>
+        ) : null}
+
+        <Button
+          type="button"
+          className="w-full"
+          size="lg"
+          disabled={!canComplete}
+          onClick={completeSale}
+        >
+          {mutation.isPending ? 'Completing sale…' : 'Complete Sale'}
+        </Button>
+      </section>
+    ) : null
+
+  return (
+    <div className="space-y-5 pb-24 lg:space-y-0 lg:pb-0">
+      <div className="flex items-center justify-between gap-3">
+        <p className="app-kicker">Sell</p>
+        <Link
+          to="/sales/history"
+          className="text-xs text-muted underline hover:text-foreground"
+        >
+          History
+        </Link>
+      </div>
+
+      <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-6">
+        <div className="space-y-5">
+          <Input
+            ref={searchRef}
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={onSearchKeyDown}
+            placeholder="Search product or Product ID…"
+            aria-label="Search products"
+          />
+
+          {error && cart.length === 0 ? (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <section aria-live="polite">
+            <PosProductResults
+              products={productsQuery.data ?? []}
+              isLoading={productsQuery.isFetching}
+              search={deferredSearch}
+              onAdd={addProduct}
+            />
+            {deferredSearch &&
+            !productsQuery.isFetching &&
+            (productsQuery.data?.length ?? 0) > 0 ? (
+              <p className="mt-2 text-xs text-muted">
+                Press Enter to add the highlighted best match (exact Product ID
+                first).
+              </p>
+            ) : null}
+          </section>
+
+          <section className="panel p-4">
+            <h2 className="app-kicker mb-3">Cart</h2>
+            <CartPanel
+              items={cart}
+              onQuantityChange={(productId, quantity) => {
+                setCart((prev) =>
+                  prev.map((i) => {
+                    if (i.product_id !== productId) return i
+                    const clamped = Math.min(
+                      i.available_stock,
+                      Math.max(1, Math.floor(quantity)),
+                    )
+                    return { ...i, quantity: clamped }
+                  }),
+                )
+              }}
+              onPriceTypeChange={(productId, priceType: PriceType) => {
+                setCart((prev) =>
+                  prev.map((i) => {
+                    if (i.product_id !== productId) return i
+                    const next: CartItem = { ...i, price_type: priceType }
+                    if (priceType === 'RETAIL') next.unit_price = i.retail_price
+                    if (priceType === 'WHOLESALE')
+                      next.unit_price = i.wholesale_price
+                    return next
+                  }),
+                )
+              }}
+              onCustomPriceChange={(productId, unitPrice) => {
+                setCart((prev) =>
+                  prev.map((i) =>
+                    i.product_id === productId
+                      ? { ...i, unit_price: unitPrice, price_type: 'CUSTOM' }
+                      : i,
+                  ),
+                )
+              }}
+              onRemove={(productId) => {
+                setCart((prev) =>
+                  prev.filter((i) => i.product_id !== productId),
+                )
+              }}
+            />
+          </section>
+        </div>
+
+        <aside className="mt-6 panel p-4 lg:sticky lg:top-4 lg:mt-0">
+          {cart.length > 0 ? (
+            checkoutBlock
+          ) : (
+            <p className="text-sm text-muted">
+              Add products to see total and payment.
+            </p>
+          )}
+        </aside>
+      </div>
+
+      {cart.length > 0 ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-strong bg-surface p-3 lg:hidden">
+          <div className="mx-auto flex max-w-5xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="app-kicker">Total</p>
+              <p className="truncate text-lg tabular-nums font-semibold">
+                {formatMoney(total)}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              className="shrink-0"
+              disabled={!canComplete}
+              onClick={completeSale}
+            >
+              {mutation.isPending ? '…' : 'Complete'}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}

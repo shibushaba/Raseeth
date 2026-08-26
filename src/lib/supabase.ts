@@ -1,24 +1,25 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import type { Database } from '@/types/database'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()
+const supabaseAnonKey = (
+  import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+)?.trim()
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    '[raseeth] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. Copy .env.example to .env.local.',
-  )
-}
+/** True when the production build was shipped without Supabase env vars. */
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
-export const supabase = createClient<Database>(
-  supabaseUrl ?? '',
-  supabaseAnonKey ?? '',
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  },
-)
+/**
+ * Only create a client when URL + anon key are present.
+ * Empty strings throw inside @supabase/supabase-js and white-screen the app.
+ */
+export const supabase: SupabaseClient<Database> = isSupabaseConfigured
+  ? createClient<Database>(supabaseUrl!, supabaseAnonKey!, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    })
+  : (null as unknown as SupabaseClient<Database>)

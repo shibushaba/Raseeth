@@ -10,6 +10,7 @@ import {
 import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardBody } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { createSale, getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
@@ -255,65 +256,77 @@ export function PosScreen() {
   if (completed) {
     const paid = completed.payments.reduce((a, p) => a + p.amount, 0)
     return (
-      <div className="panel max-w-md px-5 py-6">
-        <p className="app-kicker">Sale completed</p>
-        <p className="mt-2 text-xl font-semibold tracking-tight">
-          {completed.sale_number}
-        </p>
-        <div className="mt-5 border-t border-border pt-4">
-          <p className="app-kicker">Total</p>
-          <p className="mt-1 text-xl tabular-nums font-semibold">
-            {formatMoney(completed.total_amount)}
-          </p>
-        </div>
-        <div className="mt-4 border-t border-border pt-4">
-          <p className="app-kicker">Payment</p>
-          <ul className="mt-2 space-y-1 text-sm">
-            {completed.payments.map((p, i) => (
-              <li
-                key={`${p.method}-${i}`}
-                className="flex justify-between gap-4"
-              >
-                <span>{PAYMENT_METHOD_LABEL[p.method]}</span>
-                <span className="tabular-nums">{formatMoney(p.amount)}</span>
+      <Card className="mx-auto max-w-md">
+        <CardBody className="space-y-5 py-6">
+          <div className="text-center">
+            <p className="eyebrow">Sale completed</p>
+            <p className="mt-2 font-mono text-xl font-semibold tracking-tight">
+              {completed.sale_number}
+            </p>
+          </div>
+
+          <div className="border-t border-dashed border-border pt-4">
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="section-label">Total</span>
+              <span className="text-xl tabular-nums font-semibold">
+                {formatMoney(completed.total_amount)}
+              </span>
+            </div>
+          </div>
+
+          <div className="border-t border-dashed border-border pt-4">
+            <p className="section-label">Payment</p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {completed.payments.map((p, i) => (
+                <li
+                  key={`${p.method}-${i}`}
+                  className="flex justify-between gap-4"
+                >
+                  <span className="text-muted">
+                    {PAYMENT_METHOD_LABEL[p.method]}
+                  </span>
+                  <span className="tabular-nums">{formatMoney(p.amount)}</span>
+                </li>
+              ))}
+              <li className="flex justify-between gap-4 border-t border-border pt-2 font-semibold">
+                <span>Paid</span>
+                <span className="tabular-nums">{formatMoney(paid)}</span>
               </li>
-            ))}
-            <li className="flex justify-between gap-4 border-t border-border pt-2 font-medium">
-              <span>Paid</span>
-              <span className="tabular-nums">{formatMoney(paid)}</span>
-            </li>
-          </ul>
-        </div>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            onClick={() => {
-              setCompleted(null)
-              mutation.reset()
-              queueMicrotask(() => searchRef.current?.focus())
-            }}
-          >
-            New Sale
-          </Button>
-          <Link
-            to={`/sales/${completed.id}`}
-            className="inline-flex h-11 items-center rounded-sm border border-border-strong bg-surface px-4 text-sm font-medium hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-          >
-            View Sale
-          </Link>
-        </div>
-      </div>
+            </ul>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button
+              type="button"
+              variant="accent"
+              onClick={() => {
+                setCompleted(null)
+                mutation.reset()
+                queueMicrotask(() => searchRef.current?.focus())
+              }}
+            >
+              New Sale
+            </Button>
+            <Link
+              to={`/sales/${completed.id}`}
+              className="inline-flex h-11 items-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-800/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              View Sale
+            </Link>
+          </div>
+        </CardBody>
+      </Card>
     )
   }
 
   const checkoutBlock =
     cart.length > 0 ? (
       <section className="space-y-5 border-t border-border pt-5 lg:border-t-0 lg:pt-0">
-        <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
-          <p className="app-kicker">Total</p>
-          <p className="text-xl tabular-nums font-semibold">
+        <div className="flex items-baseline justify-between gap-4 border-b border-dashed border-border pb-3">
+          <span className="section-label">Total</span>
+          <span className="text-xl tabular-nums font-semibold">
             {formatMoney(total)}
-          </p>
+          </span>
         </div>
 
         <PaymentPanel
@@ -341,6 +354,7 @@ export function PosScreen() {
 
         <Button
           type="button"
+          variant="accent"
           className="w-full"
           size="lg"
           disabled={!canComplete}
@@ -352,16 +366,19 @@ export function PosScreen() {
     ) : null
 
   return (
-    <div className="space-y-5 pb-24 lg:space-y-0 lg:pb-0">
-      <div className="flex items-center justify-between gap-3">
-        <p className="app-kicker">Sell</p>
+    <div className="space-y-6 pb-24 lg:space-y-0 lg:pb-0">
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="page-title">New Sale</h1>
+          <p className="page-subtitle">Search products and check out.</p>
+        </div>
         <Link
           to="/sales/history"
-          className="text-xs text-muted underline hover:text-foreground"
+          className="mt-1 text-sm text-muted underline-offset-2 hover:text-foreground hover:underline"
         >
           History
         </Link>
-      </div>
+      </header>
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-6">
         <div className="space-y-5">
@@ -391,87 +408,101 @@ export function PosScreen() {
             {deferredSearch &&
             !productsQuery.isFetching &&
             (productsQuery.data?.length ?? 0) > 0 ? (
-              <p className="mt-2 text-xs text-muted">
+              <p className="mt-2 section-hint">
                 Press Enter to add the highlighted best match (exact Product ID
                 first).
               </p>
             ) : null}
           </section>
 
-          <section className="panel p-4">
-            <h2 className="app-kicker mb-3">Cart</h2>
-            <CartPanel
-              items={cart}
-              onQuantityChange={(productId, quantity) => {
-                setCart((prev) =>
-                  prev.map((i) => {
-                    if (i.product_id !== productId) return i
-                    const clamped = Math.min(
-                      i.available_stock,
-                      Math.max(1, Math.floor(quantity)),
-                    )
-                    return { ...i, quantity: clamped }
-                  }),
-                )
-              }}
-              onPriceTypeChange={(productId, priceType: PriceType) => {
-                setCart((prev) =>
-                  prev.map((i) => {
-                    if (i.product_id !== productId) return i
-                    const next: CartItem = { ...i, price_type: priceType }
-                    if (priceType === 'RETAIL') next.unit_price = i.retail_price
-                    if (priceType === 'WHOLESALE')
-                      next.unit_price = i.wholesale_price
-                    return next
-                  }),
-                )
-              }}
-              onCustomPriceChange={(productId, unitPrice) => {
-                setCart((prev) =>
-                  prev.map((i) =>
-                    i.product_id === productId
-                      ? { ...i, unit_price: unitPrice, price_type: 'CUSTOM' }
-                      : i,
-                  ),
-                )
-              }}
-              onRemove={(productId) => {
-                setCart((prev) =>
-                  prev.filter((i) => i.product_id !== productId),
-                )
-              }}
-            />
-          </section>
+          <Card>
+            <CardBody className="py-4">
+              <h2 className="section-label mb-3">Your sale</h2>
+              <CartPanel
+                items={cart}
+                onQuantityChange={(productId, quantity) => {
+                  setCart((prev) =>
+                    prev.map((i) => {
+                      if (i.product_id !== productId) return i
+                      const clamped = Math.min(
+                        i.available_stock,
+                        Math.max(1, Math.floor(quantity)),
+                      )
+                      return { ...i, quantity: clamped }
+                    }),
+                  )
+                }}
+                onPriceTypeChange={(productId, priceType: PriceType) => {
+                  setCart((prev) =>
+                    prev.map((i) => {
+                      if (i.product_id !== productId) return i
+                      const next: CartItem = { ...i, price_type: priceType }
+                      if (priceType === 'RETAIL') next.unit_price = i.retail_price
+                      if (priceType === 'WHOLESALE')
+                        next.unit_price = i.wholesale_price
+                      return next
+                    }),
+                  )
+                }}
+                onCustomPriceChange={(productId, unitPrice) => {
+                  setCart((prev) =>
+                    prev.map((i) =>
+                      i.product_id === productId
+                        ? { ...i, unit_price: unitPrice, price_type: 'CUSTOM' }
+                        : i,
+                    ),
+                  )
+                }}
+                onRemove={(productId) => {
+                  setCart((prev) =>
+                    prev.filter((i) => i.product_id !== productId),
+                  )
+                }}
+              />
+            </CardBody>
+          </Card>
         </div>
 
-        <aside className="mt-6 panel p-4 lg:sticky lg:top-4 lg:mt-0">
-          {cart.length > 0 ? (
-            checkoutBlock
-          ) : (
-            <p className="text-sm text-muted">
-              Add products to see total and payment.
-            </p>
-          )}
+        <aside className="mt-6 lg:sticky lg:top-4 lg:mt-0">
+          <Card>
+            <CardBody className="py-4">
+              {cart.length > 0 ? (
+                checkoutBlock
+              ) : (
+                <p className="section-hint">
+                  Add products to see total and payment.
+                </p>
+              )}
+            </CardBody>
+          </Card>
         </aside>
       </div>
 
       {cart.length > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-strong bg-surface p-3 lg:hidden">
+        <div
+          className="fixed inset-x-0 z-20 border-t border-border bg-surface/95 p-3 backdrop-blur-sm lg:hidden"
+          style={{
+            bottom:
+              'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px))',
+            paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
+          }}
+        >
           <div className="mx-auto flex max-w-5xl items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="app-kicker">Total</p>
-              <p className="truncate text-lg tabular-nums font-semibold">
+              <p className="eyebrow">Total</p>
+              <p className="truncate text-lg font-semibold tabular-nums">
                 {formatMoney(total)}
               </p>
             </div>
             <Button
               type="button"
+              variant="accent"
               size="lg"
-              className="shrink-0"
+              className="min-h-11 shrink-0"
               disabled={!canComplete}
               onClick={completeSale}
             >
-              {mutation.isPending ? '…' : 'Complete'}
+              {mutation.isPending ? '…' : 'Complete sale'}
             </Button>
           </div>
         </div>

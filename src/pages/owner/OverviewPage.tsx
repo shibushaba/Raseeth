@@ -1,101 +1,35 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { InsightCard } from '@/components/dashboard/InsightCard'
+import { MetricCard } from '@/components/dashboard/MetricCard'
+import { PeriodSwitcher } from '@/components/dashboard/PeriodSwitcher'
+import { SectionHeader } from '@/components/dashboard/SectionHeader'
+import { TrendChart } from '@/components/dashboard/TrendChart'
+import { Card, CardBody } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   getBusinessPulse,
   getBusinessSummary,
+  getBusinessTrend,
   getInventorySummary,
   getRecentActivity,
   getRecentSales,
   getTopProducts,
-  getUnreadMessageCount,
 } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { ActivityPreviewList } from '@/features/activity/components/ActivityFeed'
-import { BusinessPulsePanel } from '@/features/owner/components/BusinessPulsePanel'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
   dashboardRangeBounds,
   formatTime,
   greetingForHour,
+  trendBucketLabel,
   type DashboardRangeKey,
 } from '@/lib/datetime'
-import { logTechnicalError, toUserMessage } from '@/lib/errors'
+import { toUserMessage } from '@/lib/errors'
 import { formatMoney } from '@/lib/money'
-import { cn } from '@/lib/utils'
-
-const RANGE_OPTIONS: Array<{ key: DashboardRangeKey; label: string }> = [
-  { key: 'today', label: 'Today' },
-  { key: 'yesterday', label: 'Yesterday' },
-  { key: '7d', label: '7 Days' },
-  { key: '30d', label: '30 Days' },
-]
-
-function OverviewSection({
-  title,
-  children,
-  action,
-}: {
-  title: string
-  children: ReactNode
-  action?: ReactNode
-}) {
-  return (
-    <section className="section-rule">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="app-kicker">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function MetricBlock({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
-  return (
-    <div className="border border-border bg-surface px-3 py-3">
-      <p className="app-kicker">{label}</p>
-      <p className="mt-1.5 text-xl tabular-nums font-semibold tracking-tight sm:text-2xl">
-        {value}
-      </p>
-    </div>
-  )
-}
-
-function BreakdownRow({
-  label,
-  value,
-  emphasis,
-}: {
-  label: string
-  value: string
-  emphasis?: boolean
-}) {
-  return (
-    <div
-      className={cn(
-        'flex items-baseline justify-between gap-4 py-1.5',
-        emphasis && 'mt-1 border-t border-neutral-200 pt-3 font-medium',
-      )}
-    >
-      <span className={cn('text-sm', emphasis ? 'text-black' : 'text-neutral-600')}>
-        {label}
-      </span>
-      <span className="tabular-nums text-sm">{value}</span>
-    </div>
-  )
-}
-
-function formatCoveragePct(coverage: number): string {
-  return `${Math.round(coverage * 100)}%`
-}
 
 function formatMargin(margin: number | null): string {
   if (margin === null) return '—'
@@ -110,6 +44,11 @@ export function OwnerOverviewPage() {
   const summaryQuery = useQuery({
     queryKey: queryKeys.business.summary(bounds.rangeKey),
     queryFn: () => getBusinessSummary(bounds.start, bounds.end),
+  })
+
+  const trendQuery = useQuery({
+    queryKey: queryKeys.business.trend(bounds.rangeKey),
+    queryFn: () => getBusinessTrend(bounds.start, bounds.end),
   })
 
   const pulseQuery = useQuery({
@@ -127,15 +66,9 @@ export function OwnerOverviewPage() {
     queryFn: getInventorySummary,
   })
 
-  const recentQuery = useQuery({
+  const recentSalesQuery = useQuery({
     queryKey: queryKeys.sales.recent(5),
     queryFn: () => getRecentSales(5),
-  })
-
-  const unreadQuery = useQuery({
-    queryKey: queryKeys.messages.unreadCount,
-    queryFn: getUnreadMessageCount,
-    refetchInterval: 30_000,
   })
 
   const activityQuery = useQuery({
@@ -150,381 +83,275 @@ export function OwnerOverviewPage() {
   })
 
   const summary = summaryQuery.data
-  const coveragePct = summary ? Math.round(summary.costCoverage * 100) : 0
+  const trendData = useMemo(
+    () =>
+      (trendQuery.data ?? []).map((p) => ({
+        label: trendBucketLabel(p.periodStart, range),
+        sales: p.netSales,
+        profit: p.grossProfit,
+      })),
+    [trendQuery.data, range],
+  )
+
+  const insights = pulseQuery.data?.signals.slice(0, 3) ?? []
+  const inv = inventoryQuery.data
+  const inStock = inv
+    ? Math.max(0, inv.total_products - inv.out_of_stock - inv.low_stock)
+    : 0
 
   return (
-    <div className="mx-auto max-w-4xl space-y-1">
-      <header className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto max-w-3xl space-y-8 lg:max-w-none">
+      <header className="space-y-4">
         <div>
-          <p className="app-kicker">{greetingForHour()}</p>
-          <h1 className="mt-1 app-heading">Overview</h1>
+          <h1 className="page-title">{greetingForHour()}</h1>
+          <p className="page-subtitle">Your store at a glance</p>
         </div>
-        <div
-          className="flex flex-wrap gap-0.5 border border-border bg-surface p-0.5"
-          role="group"
-          aria-label="Date range"
-        >
-          {RANGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => setRange(opt.key)}
-              aria-pressed={range === opt.key}
-              className={cn(
-                'min-h-10 rounded-sm px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground',
-                range === opt.key
-                  ? 'bg-primary text-white'
-                  : 'text-muted hover:bg-neutral-100 hover:text-foreground',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <PeriodSwitcher value={range} onChange={setRange} />
       </header>
 
-      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border border-border bg-surface px-3 py-2 text-sm">
-        <span className="app-kicker">Quick actions</span>
-        <Link
-          to="/inventory"
-          className="text-foreground underline hover:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-        >
-          Inventory
-        </Link>
-        <Link
-          to="/sales"
-          className="text-foreground underline hover:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-        >
-          Sales
-        </Link>
-        <Link
-          to="/messages"
-          className="text-foreground underline hover:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-        >
-          Messages
-        </Link>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <MetricCard
+          label="Sales"
+          value={
+            summary?.hasSales ? formatMoney(summary.netSales) : '₹0'
+          }
+          loading={summaryQuery.isLoading}
+        />
+        <MetricCard
+          label="Profit"
+          value={
+            summary?.grossProfit === null || summary?.grossProfit === undefined
+              ? '—'
+              : formatMoney(summary.grossProfit)
+          }
+          loading={summaryQuery.isLoading}
+        />
+        <MetricCard
+          label="Margin"
+          value={formatMargin(summary?.grossMargin ?? null)}
+          loading={summaryQuery.isLoading}
+        />
       </div>
 
-      <OverviewSection title="Business Pulse">
-        <BusinessPulsePanel
-          pulse={pulseQuery.data}
-          isLoading={pulseQuery.isLoading}
-          errorMessage={
-            pulseQuery.error
-              ? (() => {
-                  logTechnicalError('getBusinessPulse', pulseQuery.error)
-                  return 'unavailable'
-                })()
-              : null
-          }
-        />
-      </OverviewSection>
-
-      <OverviewSection title="Performance">
-        {summaryQuery.isLoading ? (
-          <div className="h-28 animate-pulse bg-neutral-100" />
-        ) : summaryQuery.error ? (
-          <p className="text-sm text-red-700" role="alert">
-            {(() => {
-              logTechnicalError('getBusinessSummary', summaryQuery.error)
-              return toUserMessage(
-                summaryQuery.error,
-                'Unable to load business performance.',
-              )
-            })()}
-          </p>
-        ) : !summary?.hasSales ? (
-          <div>
-            <p className="text-lg">No sales yet.</p>
-            <p className="mt-2 text-sm text-neutral-600">
-              Business performance will appear here once transactions begin.
+      {!summaryQuery.isLoading && summary && !summary.hasSales ? (
+        <Card>
+          <CardBody className="py-8 text-center">
+            <p className="text-base font-medium text-foreground">No sales yet.</p>
+            <p className="mt-2 text-sm text-muted">
+              Your store&apos;s performance will appear here once you start
+              selling.
             </p>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <MetricBlock
-                label="Net Sales"
-                value={formatMoney(summary.netSales)}
-              />
-              <MetricBlock
-                label="Gross Profit"
-                value={
-                  summary.grossProfit === null
-                    ? '—'
-                    : formatMoney(summary.grossProfit)
-                }
-              />
-              <MetricBlock
-                label="Margin"
-                value={formatMargin(summary.grossMargin)}
-              />
-              <MetricBlock
-                label="Units Sold"
-                value={String(summary.unitsSold)}
-              />
+          </CardBody>
+        </Card>
+      ) : null}
+
+      <TrendChart
+        title="Sales"
+        subtitle="Is business going up or down?"
+        data={trendData}
+        loading={trendQuery.isLoading}
+        showProfit={false}
+      />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section>
+          <SectionHeader title="Insights" />
+          {pulseQuery.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
             </div>
-
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                  Sales
-                </p>
-                <BreakdownRow
-                  label="Gross Sales"
-                  value={formatMoney(summary.grossSales)}
-                />
-                <BreakdownRow
-                  label="Returns"
-                  value={formatMoney(summary.returns)}
-                />
-                <BreakdownRow
-                  label="Net Sales"
-                  value={formatMoney(summary.netSales)}
-                  emphasis
-                />
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                  Profit
-                </p>
-                {summary.grossProfit === null ? (
-                  <div>
-                    <BreakdownRow label="Gross Profit" value="—" />
-                    <p className="mt-3 text-sm text-neutral-600">
-                      Cost coverage {formatCoveragePct(summary.costCoverage)}
-                    </p>
-                    <p className="mt-1 text-sm text-neutral-600">
-                      Profitability will appear as new cost-tracked sales are
-                      recorded.
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <BreakdownRow
-                      label="Net Sales"
-                      value={formatMoney(summary.netSales)}
-                    />
-                    <BreakdownRow
-                      label="COGS"
-                      value={formatMoney(summary.cogs ?? 0)}
-                    />
-                    <BreakdownRow
-                      label="Gross Profit"
-                      value={formatMoney(summary.grossProfit)}
-                      emphasis
-                    />
-                    <div className="mt-3 flex items-baseline justify-between gap-4">
-                      <span className="text-sm text-neutral-600">Margin</span>
-                      <span className="tabular-nums text-sm">
-                        {formatMargin(summary.grossMargin)}
-                      </span>
-                    </div>
-                    <p className="mt-4 text-sm text-neutral-600">
-                      Cost coverage {formatCoveragePct(summary.costCoverage)}
-                    </p>
-                    {coveragePct < 100 ? (
-                      <p className="mt-1 text-sm text-neutral-600">
-                        Profit based on transactions with available cost data
-                        ({coveragePct}% coverage).
-                      </p>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </OverviewSection>
-
-      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-10">
-        <OverviewSection title="Top products">
-          {topQuery.isLoading ? (
-            <div className="h-24 animate-pulse bg-neutral-100" />
-          ) : topQuery.error ? (
-            <p className="text-sm text-red-700">
-              {toUserMessage(topQuery.error, 'Unable to load top products.')}
+          ) : pulseQuery.error ? (
+            <p className="text-sm text-muted" role="status">
+              Insights are unavailable right now.
             </p>
-          ) : (topQuery.data?.length ?? 0) === 0 ? (
-            <p className="text-sm text-neutral-600">
-              Top products appear once cost-tracked sales are recorded.
-            </p>
+          ) : insights.length === 0 ? (
+            <Card>
+              <CardBody className="py-6">
+                <p className="text-sm text-muted">
+                  Everything looks good. Nothing needs your attention.
+                </p>
+              </CardBody>
+            </Card>
           ) : (
-            <ul className="divide-y divide-neutral-200">
-              {topQuery.data?.map((p) => (
-                <li
-                  key={p.productId}
-                  className="flex items-baseline justify-between gap-3 py-3"
-                >
-                  <Link
-                    to={`/inventory/${p.productId}`}
-                    className="min-w-0 truncate font-medium hover:underline"
-                  >
-                    {p.productName}
-                  </Link>
-                  <span className="shrink-0 tabular-nums text-sm">
-                    {formatMoney(p.grossProfit)} profit
-                  </span>
-                </li>
+            <div className="space-y-3">
+              {insights.map((signal) => (
+                <InsightCard
+                  key={signal.id}
+                  type={signal.type}
+                  title={signal.title.replace(/_/g, ' ')}
+                  description={signal.description}
+                  href={signal.href}
+                  compact
+                />
               ))}
-            </ul>
+            </div>
           )}
-        </OverviewSection>
+        </section>
 
-        <OverviewSection
-          title="Needs attention"
-          action={
-            <Link
-              to="/inventory"
-              className="text-sm text-neutral-600 underline hover:text-black"
-            >
-              View Inventory
-            </Link>
-          }
-        >
+        <section>
+          <SectionHeader
+            title="Inventory"
+            actionLabel="View inventory"
+            actionTo="/inventory"
+          />
           {inventoryQuery.isLoading ? (
-            <div className="h-20 animate-pulse bg-neutral-100" />
+            <Skeleton className="h-40 w-full" />
           ) : inventoryQuery.error ? (
-            <p className="text-sm text-red-700">
+            <p className="text-sm text-danger">
               {toUserMessage(
                 inventoryQuery.error,
                 'Unable to load inventory summary.',
               )}
             </p>
-          ) : (inventoryQuery.data?.total_products ?? 0) === 0 ? (
-            <p className="text-sm text-foreground">No products yet.</p>
-          ) : (inventoryQuery.data?.needs_attention ?? 0) === 0 &&
-            (inventoryQuery.data?.recent_adjustments ?? 0) === 0 ? (
-            <p className="text-sm text-neutral-600">
-              Inventory looks steady for now.
-            </p>
+          ) : inv?.total_products === 0 ? (
+            <Card>
+              <CardBody className="py-6">
+                <p className="text-sm font-medium text-foreground">
+                  No products yet.
+                </p>
+              </CardBody>
+            </Card>
           ) : (
-            <ul className="space-y-4">
-              <li className="flex items-baseline justify-between gap-3">
-                <span className="text-sm text-neutral-600">Total products</span>
-                <span className="tabular-nums text-lg font-medium">
-                  {inventoryQuery.data?.total_products ?? 0}
-                </span>
-              </li>
-              <li className="flex items-baseline justify-between gap-3">
-                <span className="text-sm text-neutral-600">
-                  Products needing attention
-                </span>
-                <span className="tabular-nums text-lg font-medium">
-                  {inventoryQuery.data?.needs_attention ?? 0}
-                </span>
-              </li>
-              <li className="flex items-baseline justify-between gap-3">
-                <span className="text-sm text-neutral-600">
-                  Adjustments (7 days)
-                </span>
-                <span className="tabular-nums text-lg font-medium">
-                  {inventoryQuery.data?.recent_adjustments ?? 0}
-                </span>
-              </li>
-            </ul>
+            <Card>
+              <CardBody className="space-y-4 py-5">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-muted">Total products</span>
+                  <span className="text-lg font-semibold tabular-nums">
+                    {inv?.total_products ?? 0}
+                  </span>
+                </div>
+                <div className="space-y-3 border-t border-border pt-4">
+                  <StatRow label="In stock" value={inStock} tone="success" />
+                  <StatRow label="Low stock" value={inv?.low_stock ?? 0} tone="warning" />
+                  <StatRow label="Out of stock" value={inv?.out_of_stock ?? 0} tone="danger" />
+                </div>
+              </CardBody>
+            </Card>
           )}
-        </OverviewSection>
+        </section>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-10">
-        <OverviewSection
-          title="Recent sales"
-          action={
-            <Link
-              to="/sales"
-              className="text-sm text-neutral-600 underline hover:text-black"
-            >
-              View Sales
-            </Link>
-          }
-        >
-          {recentQuery.isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-10 animate-pulse bg-neutral-100" />
-              ))}
-            </div>
-          ) : recentQuery.error ? (
-            <p className="text-sm text-red-700">
-              {(() => {
-                logTechnicalError('getRecentSales', recentQuery.error)
-                return toUserMessage(
-                  recentQuery.error,
-                  'Unable to load recent sales.',
-                )
-              })()}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section>
+          <SectionHeader title="Top products" />
+          {topQuery.isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : topQuery.error ? (
+            <p className="text-sm text-muted">
+              {toUserMessage(topQuery.error, 'Unable to load top products.')}
             </p>
-          ) : (recentQuery.data?.length ?? 0) === 0 ? (
-            <p className="text-sm text-neutral-600">No sales yet.</p>
+          ) : (topQuery.data ?? []).length === 0 ? (
+            <Card>
+              <CardBody className="py-6 text-sm text-muted">
+                Top products appear once you have sales with tracked costs.
+              </CardBody>
+            </Card>
           ) : (
-            <ul className="divide-y divide-neutral-200">
-              {recentQuery.data?.map((sale) => (
-                <li key={sale.id}>
-                  <Link
-                    to={`/sales/${sale.id}`}
-                    className="flex items-center justify-between gap-3 py-3 hover:bg-neutral-50"
-                  >
-                    <div>
-                      <p className="font-mono text-sm">{sale.sale_number}</p>
-                      <p className="text-xs text-neutral-500">
-                        {formatTime(sale.created_at)}
-                      </p>
-                    </div>
-                    <p className="tabular-nums text-sm font-medium">
-                      {formatMoney(sale.total_amount)}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <Card>
+              <ul className="divide-y divide-border">
+                {(topQuery.data ?? []).map((p) => (
+                  <li key={p.productId}>
+                    <Link
+                      to={`/inventory/${p.productId}`}
+                      className="row-hover flex items-center justify-between gap-4 px-5 py-4"
+                    >
+                      <span className="min-w-0 truncate font-medium">
+                        {p.productName}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted">
+                        {formatMoney(p.grossProfit)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
           )}
-        </OverviewSection>
+        </section>
 
-        <OverviewSection
+        <section>
+          <SectionHeader
+            title="Recent sales"
+            actionLabel="View sales"
+            actionTo="/sales"
+          />
+          {recentSalesQuery.isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (recentSalesQuery.data ?? []).length === 0 ? (
+            <Card>
+              <CardBody className="py-6 text-sm text-muted">
+                No sales yet.
+              </CardBody>
+            </Card>
+          ) : (
+            <Card>
+              <ul className="divide-y divide-border">
+                {(recentSalesQuery.data ?? []).map((sale) => (
+                  <li key={sale.id}>
+                    <Link
+                      to={`/sales/${sale.id}`}
+                      className="row-hover flex items-center justify-between gap-4 px-5 py-4"
+                    >
+                      <div>
+                        <p className="font-medium">{sale.sale_number}</p>
+                        <p className="text-sm text-muted">
+                          {formatTime(sale.created_at)}
+                        </p>
+                      </div>
+                      <span className="tabular-nums font-semibold">
+                        {formatMoney(sale.total_amount)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </section>
+      </div>
+
+      <section>
+        <SectionHeader
           title="Recent activity"
-          action={
-            <Link
-              to="/activity"
-              className="text-sm text-neutral-600 underline hover:text-black"
-            >
-              View Activity
-            </Link>
-          }
-        >
-          {activityQuery.isLoading ? (
-            <div className="h-16 animate-pulse bg-neutral-100" />
-          ) : activityQuery.error ? (
-            <p className="text-sm text-red-700">
-              {toUserMessage(
-                activityQuery.error,
-                'Unable to load activity.',
-              )}
-            </p>
-          ) : (
-            <ActivityPreviewList
-              items={(activityQuery.data ?? []).slice(0, 5)}
-            />
-          )}
-        </OverviewSection>
-      </div>
+          actionLabel="View all"
+          actionTo="/activity"
+        />
+        {activityQuery.isLoading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : (
+          <ActivityPreviewList
+            items={(activityQuery.data ?? []).slice(0, 5)}
+            emptyLabel="No activity yet."
+          />
+        )}
+      </section>
+    </div>
+  )
+}
 
-      <OverviewSection
-        title="Messages"
-        action={
-          <Link
-            to="/messages"
-            className="text-sm text-neutral-600 underline hover:text-black"
-          >
-            View Messages
-          </Link>
-        }
-      >
-        <Link to="/messages" className="block py-1 hover:bg-neutral-50">
-          <p className="text-lg">{unreadQuery.data ?? 0} unread</p>
-        </Link>
-      </OverviewSection>
+function StatRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: number
+  tone: 'success' | 'warning' | 'danger'
+}) {
+  const dot =
+    tone === 'success'
+      ? 'bg-success'
+      : tone === 'warning'
+        ? 'bg-warning'
+        : 'bg-danger'
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="flex items-center gap-2 text-sm text-muted">
+        <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />
+        {label}
+      </span>
+      <span className="tabular-nums font-medium">{value}</span>
     </div>
   )
 }

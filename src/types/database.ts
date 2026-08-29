@@ -528,6 +528,13 @@ export interface Database {
         }
         Returns: Json
       }
+      get_business_trend: {
+        Args: {
+          p_range_start: string
+          p_range_end: string
+        }
+        Returns: Json
+      }
       get_top_products: {
         Args: {
           p_range_start: string

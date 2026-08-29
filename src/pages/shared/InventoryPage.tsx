@@ -3,7 +3,6 @@ import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { EmptyState } from '@/components/layout/EmptyState'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Input } from '@/components/ui/input'
 import { getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
@@ -35,28 +34,28 @@ export function InventoryPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Inventory"
-        description={
-          permissions.canCreateProduct
-            ? 'Find products, check stock, and keep the ledger accurate.'
-            : 'Read-only view of products, stock, and movement history.'
-        }
-      />
+      <header className="mb-6">
+        <h1 className="page-title">Inventory</h1>
+        {!productsQuery.isLoading && !errorMessage && products.length > 0 ? (
+          <p className="mt-2 text-sm font-medium text-muted">
+            {products.length} {products.length === 1 ? 'product' : 'products'}
+          </p>
+        ) : null}
+      </header>
 
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search products or Product ID…"
-          className="sm:max-w-md"
+          placeholder="Search products…"
+          className="min-h-11 sm:max-w-md"
           aria-label="Search products"
         />
         {permissions.canCreateProduct ? (
           <Link
             to="/inventory/new"
-            className="inline-flex h-11 items-center justify-center rounded-sm border border-primary bg-primary px-4 text-sm font-medium text-white hover:bg-neutral-800 sm:ml-auto"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:ml-auto"
           >
             + Add Product
           </Link>
@@ -70,13 +69,13 @@ export function InventoryPage() {
           aria-label="Loading products"
         >
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse bg-neutral-100" />
+            <div key={i} className="card h-14 animate-pulse bg-stone-50 dark:bg-stone-800/50" />
           ))}
         </div>
       ) : null}
 
       {errorMessage ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-danger" role="alert">
           {errorMessage}
         </p>
       ) : null}
@@ -96,7 +95,7 @@ export function InventoryPage() {
             {permissions.canCreateProduct ? (
               <Link
                 to="/inventory/new"
-                className="inline-flex h-11 items-center justify-center rounded-sm border border-primary bg-primary px-4 text-sm font-medium text-white hover:bg-neutral-800"
+                className="inline-flex h-11 items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 Add Product
               </Link>

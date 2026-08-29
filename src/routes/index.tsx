@@ -9,6 +9,8 @@ import { CreateProductPage } from '@/pages/shared/CreateProductPage'
 import { ActivityPage } from '@/pages/shared/ActivityPage'
 import { InventoryPage } from '@/pages/shared/InventoryPage'
 import { MessagesPage } from '@/pages/shared/MessagesPage'
+import { MorePage } from '@/pages/shared/MorePage'
+import { SettingsPage } from '@/pages/shared/SettingsPage'
 import { ProductDetailPage } from '@/pages/shared/ProductDetailPage'
 import { SaleDetailPage } from '@/pages/shared/SaleDetailPage'
 import { ReturnDetailPage } from '@/pages/shared/ReturnDetailPage'
@@ -71,6 +73,8 @@ export function AppRouter() {
           <Route path="/inventory/:productId" element={<ProductDetailPage />} />
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/more" element={<MorePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

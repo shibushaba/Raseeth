@@ -100,3 +100,21 @@ export function groupByDay<T extends { createdAt: string }>(
     items: value.items,
   }))
 }
+
+const shortDayFmt = new Intl.DateTimeFormat('en-IN', { weekday: 'short' })
+const shortDateFmt = new Intl.DateTimeFormat('en-IN', {
+  day: 'numeric',
+  month: 'short',
+})
+
+/** Chart axis label for a trend bucket. */
+export function trendBucketLabel(
+  iso: string,
+  range: DashboardRangeKey,
+): string {
+  const d = new Date(iso)
+  if (range === 'today') return 'Today'
+  if (range === 'yesterday') return 'Yesterday'
+  if (range === '7d') return shortDayFmt.format(d)
+  return shortDateFmt.format(d)
+}

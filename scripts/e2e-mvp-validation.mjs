@@ -3088,10 +3088,10 @@ async function main() {
   {
     // Navigation labels (mirror src/lib/roles.ts — Search is header-only)
     const ownerNav = ['Overview', 'Sales', 'Inventory', 'Activity', 'Messages']
-    const salesNav = ['Home', 'Sell', 'Inventory', 'Activity', 'Messages']
-    if (ownerNav.length === 5 && salesNav[1] === 'Sell' && salesNav[0] === 'Home')
-      pass('Role nav: Owner Overview / Salesman Home+Sell')
-    else fail('Role nav: Owner Overview / Salesman Home+Sell')
+    const salesNav = ['Sales', 'Inventory', 'Activity', 'Messages']
+    if (ownerNav.length === 5 && salesNav[0] === 'Sales' && salesNav[1] === 'Inventory')
+      pass('Role nav: Owner Overview / Salesman Sales+Inventory')
+    else fail('Role nav: Owner Overview / Salesman Sales+Inventory')
 
     // Salesman: operational inventory summary OK; no profitability / pulse
     {

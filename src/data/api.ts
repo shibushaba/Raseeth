@@ -649,6 +649,33 @@ export async function getBusinessPulse(
   }
 }
 
+export type BusinessTrendPoint = {
+  periodStart: string
+  netSales: number
+  grossProfit: number | null
+}
+
+export async function getBusinessTrend(
+  rangeStart: Date,
+  rangeEnd: Date,
+): Promise<BusinessTrendPoint[]> {
+  const { data, error } = await supabase.rpc('get_business_trend', {
+    p_range_start: rangeStart.toISOString(),
+    p_range_end: rangeEnd.toISOString(),
+  })
+  if (error) throw new Error(error.message)
+  const raw = (data ?? {}) as Record<string, unknown>
+  const rows = Array.isArray(raw.points) ? raw.points : []
+  return rows.map((row) => {
+    const r = row as Record<string, unknown>
+    return {
+      periodStart: String(r.period_start ?? ''),
+      netSales: Number(r.net_sales ?? 0),
+      grossProfit: numOrNull(r.gross_profit),
+    }
+  })
+}
+
 export async function getRecentSales(limit = 5): Promise<SaleWithSeller[]> {
   const { data, error } = await supabase
     .from('sales')

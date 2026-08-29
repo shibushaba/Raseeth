@@ -41,11 +41,11 @@ export function GlobalSearchTrigger({
         aria-label="Open search"
         aria-keyshortcuts="Control+K Meta+K"
       >
-        <span aria-hidden className="text-neutral-500">
+        <span aria-hidden className="text-muted">
           ⌕
         </span>
         Search…
-        <kbd className="ml-2 hidden rounded border border-neutral-300 px-1.5 py-0.5 text-[10px] font-normal text-neutral-500 md:inline">
+        <kbd className="ml-2 hidden rounded-md border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted md:inline">
           ⌘K
         </kbd>
       </Button>
@@ -176,7 +176,7 @@ export function GlobalSearchDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/25 p-0 sm:p-6 sm:pt-[12vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 p-0 backdrop-blur-[2px] sm:p-6 sm:pt-[12vh]"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -186,11 +186,11 @@ export function GlobalSearchDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Business search"
-        className="flex h-dvh w-full flex-col border border-border-strong bg-surface sm:h-auto sm:max-h-[min(32rem,70vh)] sm:max-w-lg sm:rounded-md"
+        className="card flex h-dvh w-full flex-col overflow-hidden sm:h-auto sm:max-h-[min(32rem,70vh)] sm:max-w-lg"
         style={{ boxShadow: 'var(--shadow-dialog)' }}
       >
-        <div className="border-b border-border px-3 py-2">
-          <p className="app-kicker mb-1 px-1">Search</p>
+        <div className="border-b border-border px-4 py-3">
+          <p className="eyebrow mb-2">Search</p>
           <div className="flex items-center gap-2">
             <span className="text-muted" aria-hidden>
               ⌕
@@ -208,16 +208,16 @@ export function GlobalSearchDialog({
               aria-activedescendant={
                 flat[selected] ? `${listId}-option-${selected}` : undefined
               }
-              className="border-0 shadow-none focus-visible:outline-none"
+              className="border-0 bg-transparent shadow-none focus-visible:outline-none"
             />
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="shrink-0 sm:hidden"
+              className="min-h-11 shrink-0 text-muted sm:hidden"
               onClick={onClose}
             >
-              Close
+              Cancel
             </Button>
           </div>
         </div>
@@ -230,14 +230,12 @@ export function GlobalSearchDialog({
         >
           {showEmptyQuery ? (
             recent.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-neutral-600">
+              <p className="px-3 py-8 text-center section-hint">
                 Start typing…
               </p>
             ) : (
               <div>
-                <p className="px-3 py-2 app-kicker">
-                  Recent
-                </p>
+                <p className="px-3 py-2 eyebrow">Recent</p>
                 <ul>
                   {recent.map((item) => {
                     flatIndex += 1
@@ -260,15 +258,15 @@ export function GlobalSearchDialog({
           ) : null}
 
           {showLoading ? (
-            <p className="px-3 py-8 text-center text-sm text-neutral-600" aria-busy="true">
+            <p className="px-3 py-8 text-center section-hint" aria-busy="true">
               Searching…
             </p>
           ) : null}
 
           {showNoResults ? (
             <div className="px-3 py-8 text-center">
-              <p className="text-sm text-neutral-800">No matches found.</p>
-              <p className="mt-2 text-sm text-neutral-600">
+              <p className="text-sm font-medium">No matches found.</p>
+              <p className="mt-2 section-hint">
                 Try a product name, Product ID, Sale number, or Return number.
               </p>
             </div>
@@ -277,9 +275,7 @@ export function GlobalSearchDialog({
           {!showEmptyQuery && !showNoResults && !showLoading
             ? groups.map((group) => (
                 <div key={group.type} className="mb-3">
-                  <p className="px-3 py-2 app-kicker">
-                    {group.label}
-                  </p>
+                  <p className="px-3 py-2 eyebrow">{group.label}</p>
                   <ul>
                     {group.items.map((item) => {
                       flatIndex += 1
@@ -329,8 +325,8 @@ function ResultButton({
       <button
         type="button"
         className={cn(
-          'flex min-h-11 w-full flex-col items-start rounded-sm px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground',
-          active ? 'bg-neutral-100' : 'hover:bg-neutral-50',
+          'flex min-h-12 w-full flex-col items-start rounded-lg px-3 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:min-h-11 sm:py-2.5',
+          active ? 'bg-accent-soft/60 dark:bg-teal-950/50' : 'row-hover',
         )}
         onClick={onSelect}
         onMouseEnter={onHover}

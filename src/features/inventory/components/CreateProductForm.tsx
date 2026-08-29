@@ -61,8 +61,8 @@ export function CreateProductForm() {
 
   if (createdCode && createdId) {
     return (
-      <div className="panel max-w-lg px-6 py-8">
-        <p className="app-kicker">Product created</p>
+      <div className="card max-w-lg px-6 py-8">
+        <p className="eyebrow">Product created</p>
         <p className="mt-2 text-xl font-semibold tracking-tight">
           {createdCode}
         </p>

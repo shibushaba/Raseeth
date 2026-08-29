@@ -6,11 +6,9 @@ export function PageHeader({
   description?: string
 }) {
   return (
-    <header className="mb-6 max-w-2xl">
-      <h1 className="app-heading">{title}</h1>
-      {description ? (
-        <p className="mt-1.5 text-sm text-muted">{description}</p>
-      ) : null}
+    <header className="mb-6">
+      <h1 className="page-title">{title}</h1>
+      {description ? <p className="page-subtitle">{description}</p> : null}
     </header>
   )
 }

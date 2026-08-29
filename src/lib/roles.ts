@@ -56,27 +56,35 @@ export function isSalesman(role: UserRole | null | undefined): boolean {
 export type NavItem = {
   label: string
   to: string
+  primary?: boolean
 }
 
-/** Minimal role-specific navigation. Search stays a header control (not a nav item). */
-export function navItemsFor(role: UserRole): NavItem[] {
+/** Role-specific desktop navigation. Search stays in the header; mobile uses bottom nav. */
+export function desktopNavItemsFor(role: UserRole): NavItem[] {
   if (role === 'OWNER') {
     return [
-      { label: 'Overview', to: '/overview' },
-      { label: 'Sales', to: '/sales' },
-      { label: 'Inventory', to: '/inventory' },
+      { label: 'Overview', to: '/overview', primary: true },
+      { label: 'Sales', to: '/sales', primary: true },
+      { label: 'Inventory', to: '/inventory', primary: true },
       { label: 'Activity', to: '/activity' },
       { label: 'Messages', to: '/messages' },
+      { label: 'Settings', to: '/settings' },
     ]
   }
 
   return [
-    { label: 'Home', to: '/home' },
-    { label: 'Sell', to: '/sales' },
-    { label: 'Inventory', to: '/inventory' },
+    { label: 'Home', to: '/home', primary: true },
+    { label: 'Sales', to: '/sales', primary: true },
+    { label: 'Inventory', to: '/inventory', primary: true },
     { label: 'Activity', to: '/activity' },
     { label: 'Messages', to: '/messages' },
+    { label: 'Settings', to: '/settings' },
   ]
+}
+
+/** @deprecated Use desktopNavItemsFor */
+export function navItemsFor(role: UserRole): NavItem[] {
+  return desktopNavItemsFor(role)
 }
 
 export function homePathFor(role: UserRole): string {

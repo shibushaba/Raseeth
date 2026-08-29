@@ -25,7 +25,7 @@ export function PosProductResults({
 }) {
   if (!search.trim()) {
     return (
-      <p className="text-sm text-muted">
+      <p className="section-hint">
         Search by product name or Product ID to add items.
       </p>
     )
@@ -33,7 +33,7 @@ export function PosProductResults({
 
   if (isLoading) {
     return (
-      <p className="text-sm text-muted" aria-busy="true">
+      <p className="section-hint" aria-busy="true">
         Loading products…
       </p>
     )
@@ -41,7 +41,7 @@ export function PosProductResults({
 
   if (products.length === 0) {
     return (
-      <p className="text-sm text-muted">
+      <p className="section-hint">
         No products found. Try another name or Product ID.
       </p>
     )
@@ -52,39 +52,38 @@ export function PosProductResults({
 
   return (
     <div>
-      <ul className="panel divide-y divide-border">
+      <ul className="card divide-y divide-border overflow-hidden">
         {visible.map((product) => (
           <li
             key={product.id}
             className={cn(
-              'flex flex-col gap-3 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between',
-              product.id === highlightId && 'bg-neutral-50',
+              'flex items-center justify-between gap-3 px-4 py-3',
+              product.id === highlightId && 'bg-accent-soft/40',
             )}
           >
-            <div className="min-w-0">
-              <p className="font-medium">
-                {product.name}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="truncate font-medium">{product.name}</p>
                 {product.id === highlightId ? (
-                  <span className="ml-2 text-[11px] font-normal uppercase tracking-wider text-muted">
+                  <span className="shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
                     Best match
                   </span>
                 ) : null}
-              </p>
+              </div>
               <p className="font-mono text-xs text-muted">
                 {product.product_code}
               </p>
               <p className="mt-1 text-sm text-muted">
-                Stock: {product.current_quantity}
+                {formatMoney(product.retail_price)}
                 <span className="mx-2 text-border-strong">·</span>
-                Retail: {formatMoney(product.retail_price)}
-                <span className="mx-2 text-border-strong">·</span>
-                Wholesale: {formatMoney(product.wholesale_price)}
+                {product.current_quantity} in stock
               </p>
             </div>
             <Button
               type="button"
+              variant="accent"
               size="md"
-              className="shrink-0 self-start sm:self-center"
+              className="shrink-0"
               disabled={product.current_quantity <= 0}
               aria-label={`Add ${product.name}`}
               onClick={() => onAdd(product)}
@@ -95,7 +94,7 @@ export function PosProductResults({
         ))}
       </ul>
       {products.length > 8 ? (
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-2 section-hint">
           Showing 8 of {products.length}. Refine search for more.
         </p>
       ) : null}

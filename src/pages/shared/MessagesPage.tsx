@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Card, CardBody } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import {
   getMessages,
@@ -94,60 +94,68 @@ export function MessagesPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col">
-      <PageHeader
-        title="Messages"
-        description="Simple notes between owner and salesman."
-      />
+      <header className="mb-6">
+        <h1 className="page-title">Messages</h1>
+        <p className="page-subtitle">Simple notes between owner and salesman.</p>
+      </header>
 
-      <div className="panel min-h-[40vh] flex-1 px-3 py-3">
-        {messagesQuery.isLoading ? (
-          <div className="space-y-3" aria-busy="true">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse bg-neutral-100" />
-            ))}
-          </div>
-        ) : null}
+      <Card className="min-h-[40vh] flex-1">
+        <CardBody className="py-4">
+          {messagesQuery.isLoading ? (
+            <div className="space-y-3" aria-busy="true">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-14 animate-pulse rounded-lg bg-stone-50 dark:bg-stone-800/50" />
+              ))}
+            </div>
+          ) : null}
 
-        {messagesQuery.error ? (
-          <p className="text-sm text-danger" role="alert">
-            {toUserMessage(messagesQuery.error, 'Unable to load messages.')}
-          </p>
-        ) : null}
+          {messagesQuery.error ? (
+            <p className="text-sm text-danger" role="alert">
+              {toUserMessage(messagesQuery.error, 'Unable to load messages.')}
+            </p>
+          ) : null}
 
-        {!messagesQuery.isLoading &&
-        !messagesQuery.error &&
-        (messagesQuery.data?.length ?? 0) === 0 ? (
-          <p className="py-8 text-center text-sm text-muted">
-            No messages yet. Send the first note below.
-          </p>
-        ) : null}
+          {!messagesQuery.isLoading &&
+          !messagesQuery.error &&
+          (messagesQuery.data?.length ?? 0) === 0 ? (
+            <p className="py-8 text-center section-hint">
+              No messages yet. Send the first note below.
+            </p>
+          ) : null}
 
-        <ul className="divide-y divide-border">
-          {messagesQuery.data?.map((m) => {
-            const mine = m.sender_id === user?.id
-            return (
-              <li key={m.id} className="py-3">
-                <p
-                  className={cn(
-                    'app-kicker',
-                    mine ? 'text-muted' : 'text-foreground',
-                  )}
-                >
-                  {roleLabel(m.sender_role)}
-                  {!m.is_read && m.receiver_id === user?.id ? ' · New' : ''}
-                </p>
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
-                  {m.message}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  {formatDateTime(m.created_at)}
-                </p>
-              </li>
-            )
-          })}
-        </ul>
-        <div ref={bottomRef} />
-      </div>
+          <ul className="divide-y divide-border">
+            {messagesQuery.data?.map((m) => {
+              const mine = m.sender_id === user?.id
+              return (
+                <li key={m.id} className="py-4 first:pt-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p
+                      className={cn(
+                        'text-sm font-medium',
+                        mine ? 'text-muted' : 'text-foreground',
+                      )}
+                    >
+                      {roleLabel(m.sender_role)}
+                      {!m.is_read && m.receiver_id === user?.id ? (
+                        <span className="ml-1.5 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                          New
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {formatDateTime(m.created_at)}
+                    </p>
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+                    {m.message}
+                  </p>
+                </li>
+              )
+            })}
+          </ul>
+          <div ref={bottomRef} />
+        </CardBody>
+      </Card>
 
       <form className="mt-4 space-y-3 border-t border-border pt-4" onSubmit={onSubmit}>
         <Textarea
@@ -163,7 +171,12 @@ export function MessagesPage() {
             {error}
           </p>
         ) : null}
-        <Button type="submit" size="md" disabled={send.isPending || !draft.trim()}>
+        <Button
+          type="submit"
+          variant="accent"
+          size="md"
+          disabled={send.isPending || !draft.trim()}
+        >
           {send.isPending ? 'Sending…' : 'Send'}
         </Button>
       </form>

@@ -6,6 +6,7 @@ import { Select } from '@/components/ui/select'
 import { formatMoney, fromCents, parseMoney, toCents } from '@/lib/money'
 import { PAYMENT_METHOD_LABEL } from '@/lib/payment-labels'
 import type { PaymentMethod } from '@/types/database'
+import { cn } from '@/lib/utils'
 
 export type PaymentMode = PaymentMethod | 'SPLIT'
 
@@ -51,8 +52,8 @@ export function PaymentPanel({
   return (
     <div className="space-y-5">
       <fieldset>
-        <legend className="app-kicker">Payment</legend>
-        <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        <legend className="section-label">Payment</legend>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(
             [
               ['CASH', 'Cash'],
@@ -63,11 +64,12 @@ export function PaymentPanel({
           ).map(([value, label]) => (
             <label
               key={value}
-              className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-sm border px-3 py-2.5 text-sm ${
+              className={cn(
+                'flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors',
                 mode === value
-                  ? 'border-border-strong bg-neutral-50'
-                  : 'border-border'
-              }`}
+                  ? 'border-accent bg-accent-soft text-accent dark:bg-teal-950/60 dark:text-teal-300'
+                  : 'border-border bg-surface hover:bg-stone-50 dark:hover:bg-stone-800/60',
+              )}
             >
               <input
                 type="radio"
@@ -75,7 +77,7 @@ export function PaymentPanel({
                 value={value}
                 checked={mode === value}
                 onChange={() => onModeChange(value)}
-                className="accent-black"
+                className="sr-only"
               />
               {label}
             </label>
@@ -84,11 +86,11 @@ export function PaymentPanel({
       </fieldset>
 
       {mode !== 'SPLIT' ? (
-        <div>
-          <p className="text-xs uppercase tracking-wide text-neutral-500">
+        <div className="muted-panel rounded-lg px-4 py-3">
+          <p className="eyebrow">
             Pay with {PAYMENT_METHOD_LABEL[mode]}
           </p>
-          <p className="mt-1 text-xl tabular-nums font-medium">
+          <p className="mt-1 text-2xl tabular-nums font-semibold">
             {formatMoney(saleTotal)}
           </p>
         </div>
@@ -102,7 +104,7 @@ export function PaymentPanel({
               >
                 <div>
                   <label
-                    className="mb-1 block text-xs uppercase tracking-wide text-neutral-500"
+                    className="mb-1 block eyebrow"
                     htmlFor={`pay-method-${row.id}`}
                   >
                     Method
@@ -126,7 +128,7 @@ export function PaymentPanel({
                 </div>
                 <div>
                   <label
-                    className="mb-1 block text-xs uppercase tracking-wide text-neutral-500"
+                    className="mb-1 block eyebrow"
                     htmlFor={`pay-amount-${row.id}`}
                   >
                     Amount
@@ -158,7 +160,7 @@ export function PaymentPanel({
                   type="button"
                   variant="ghost"
                   size="md"
-                  className="mb-0.5"
+                  className="mb-0.5 text-muted"
                   disabled={splitRows.length <= 1}
                   aria-label={`Remove ${PAYMENT_METHOD_LABEL[row.method]} payment`}
                   onClick={() =>
@@ -189,26 +191,26 @@ export function PaymentPanel({
             Add payment
           </Button>
 
-          <div className="border-t border-neutral-200 pt-3 text-sm">
+          <div className="border-t border-dashed border-border pt-3 text-sm">
             <div className="flex justify-between gap-4">
-              <span className="text-neutral-600">Paid</span>
-              <span className="tabular-nums font-medium">
+              <span className="text-muted">Paid</span>
+              <span className="tabular-nums font-semibold">
                 {formatMoney(fromCents(paidCents))}
               </span>
             </div>
             <div className="mt-1 flex justify-between gap-4">
-              <span className="text-neutral-600">Remaining</span>
-              <span className="tabular-nums font-medium">
+              <span className="text-muted">Remaining</span>
+              <span className="tabular-nums font-semibold">
                 {formatMoney(fromCents(Math.max(0, remainingCents)))}
               </span>
             </div>
             {showValidation && excess > 0 ? (
-              <p className="mt-2 text-sm text-red-700" role="alert">
+              <p className="mt-2 text-sm text-danger" role="alert">
                 Payment exceeds sale total by {formatMoney(excess)}.
               </p>
             ) : null}
             {showValidation && remainingCents > 0 ? (
-              <p className="mt-2 text-sm text-neutral-700" role="status">
+              <p className="mt-2 text-sm text-muted" role="status">
                 {formatMoney(remaining)} remaining
               </p>
             ) : null}

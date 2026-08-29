@@ -81,40 +81,36 @@ export function AdjustStockForm({
   }
 
   return (
-    <form className="space-y-5 border border-border p-5" onSubmit={onSubmit}>
+    <form className="card space-y-5 p-5" onSubmit={onSubmit}>
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Adjust stock</h2>
-        <p className="mt-1 text-sm text-muted">
-          For damage, missing items, or count corrections — not supplier
-          deliveries.
-        </p>
+        <h2 className="text-lg font-semibold tracking-tight">Fix stock</h2>
+        <p className="mt-1 text-sm text-muted">{product.name}</p>
       </div>
 
       <div className="space-y-2">
-        <Label>Direction</Label>
+        <Label>How much?</Label>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             size="md"
+            className="min-h-11"
             variant={direction === 'out' ? 'primary' : 'secondary'}
             aria-pressed={direction === 'out'}
             onClick={() => setDirection('out')}
           >
-            Decrease (write-off)
+            Remove
           </Button>
           <Button
             type="button"
             size="md"
+            className="min-h-11"
             variant={direction === 'in' ? 'primary' : 'secondary'}
             aria-pressed={direction === 'in'}
             onClick={() => setDirection('in')}
           >
-            Increase (correction)
+            Add back
           </Button>
         </div>
-        <p className="text-xs text-neutral-500">
-          Use Add Stock for supplier deliveries. Adjust is only for corrections.
-        </p>
       </div>
 
       <div className="space-y-2">
@@ -129,17 +125,17 @@ export function AdjustStockForm({
           required
           autoFocus
         />
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted">
           Current stock: {product.current_quantity}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="reason">Reason</Label>
+        <Label htmlFor="reason">Why?</Label>
         <Select id="reason" name="reason" required defaultValue="Damaged">
-          <option value="Damaged">Damaged</option>
+          <option value="Damaged">Damaged / write-off</option>
           <option value="Missing">Missing</option>
-          <option value="Stock count correction">Stock count correction</option>
+          <option value="Stock count correction">Correction</option>
           <option value="Other">Other</option>
         </Select>
       </div>
@@ -161,8 +157,8 @@ export function AdjustStockForm({
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" size="md" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Saving…' : 'Adjust stock'}
+        <Button type="submit" size="md" className="min-h-11" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Saving…' : 'Save'}
         </Button>
         <Button type="button" size="md" variant="secondary" onClick={onCancel}>
           Cancel

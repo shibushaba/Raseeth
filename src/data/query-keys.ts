@@ -31,6 +31,7 @@ export const queryKeys = {
     topProducts: (rangeKey: string, limit: number) =>
       ['business', 'top-products', rangeKey, limit] as const,
     pulse: (rangeKey: string) => ['business', 'pulse', rangeKey] as const,
+    trend: (rangeKey: string) => ['business', 'trend', rangeKey] as const,
   },
   search: {
     global: (query: string) => ['search', 'global', query] as const,

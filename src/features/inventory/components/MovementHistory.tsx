@@ -11,7 +11,7 @@ function movementLabel(type: MovementType): string {
     case 'SALE':
       return 'Sale'
     case 'ADJUSTMENT':
-      return 'Adjustment'
+      return 'Stock fix'
     case 'RETURN':
       return 'Return'
   }

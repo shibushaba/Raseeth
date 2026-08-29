@@ -7,34 +7,34 @@ import { cn } from '@/lib/utils'
 function typeLabel(type: ActivityItem['type']): string {
   switch (type) {
     case 'SALE':
-      return 'SALE'
+      return 'Sale'
     case 'RETURN':
-      return 'RETURN'
+      return 'Return'
     case 'STOCK_ADDED':
-      return 'STOCK ADDED'
+      return 'Stock added'
     case 'STOCK_ADJUSTED':
-      return 'STOCK ADJUSTED'
+      return 'Stock adjusted'
     case 'PRODUCT_CREATED':
-      return 'PRODUCT CREATED'
+      return 'Product created'
     case 'MESSAGE':
-      return 'MESSAGE'
+      return 'Message'
   }
 }
 
 export function ActivityEvent({ item }: { item: ActivityItem }) {
   const body = (
-    <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3 border-b border-border py-2.5 sm:grid-cols-[5rem_minmax(0,1fr)]">
-      <span className="pt-0.5 text-xs tabular-nums text-muted">
+    <div className="flex gap-3 border-b border-border py-3">
+      <span className="w-14 shrink-0 pt-0.5 text-xs tabular-nums text-muted sm:w-16">
         {formatTime(item.createdAt)}
       </span>
-      <div className="min-w-0">
-        <p className="app-kicker">{typeLabel(item.type)}</p>
-        <p className="mt-0.5 text-sm text-foreground">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-foreground">
           {item.description ?? item.title}
         </p>
-        {item.actor?.name ? (
-          <p className="mt-0.5 text-xs text-muted">{item.actor.name}</p>
-        ) : null}
+        <p className="mt-0.5 text-xs text-muted">
+          {typeLabel(item.type)}
+          {item.actor?.name ? ` · ${item.actor.name}` : ''}
+        </p>
       </div>
     </div>
   )
@@ -43,7 +43,7 @@ export function ActivityEvent({ item }: { item: ActivityItem }) {
     return (
       <Link
         to={item.href}
-        className={cn('block hover:bg-neutral-50 focus-visible:bg-neutral-50')}
+        className={cn('block row-hover')}
       >
         {body}
       </Link>
@@ -61,7 +61,7 @@ export function ActivityPreviewList({
   emptyLabel?: string
 }) {
   if (items.length === 0) {
-    return <p className="text-sm text-muted">{emptyLabel}</p>
+    return <p className="section-hint">{emptyLabel}</p>
   }
 
   return (
@@ -71,12 +71,12 @@ export function ActivityPreviewList({
           {item.href ? (
             <Link
               to={item.href}
-              className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border py-2.5 hover:bg-neutral-50"
+              className="row-hover flex items-start justify-between gap-3 border-b border-border py-3"
             >
               <div className="min-w-0">
-                <p className="app-kicker">{typeLabel(item.type)}</p>
-                <p className="mt-0.5 truncate text-sm">
-                  {item.description ?? item.title}
+                <p className="truncate text-sm">{item.description ?? item.title}</p>
+                <p className="mt-0.5 text-xs text-muted">
+                  {typeLabel(item.type)}
                 </p>
               </div>
               <span className="shrink-0 text-xs tabular-nums text-muted">
@@ -84,11 +84,11 @@ export function ActivityPreviewList({
               </span>
             </Link>
           ) : (
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border py-2.5">
+            <div className="flex items-start justify-between gap-3 border-b border-border py-3">
               <div className="min-w-0">
-                <p className="app-kicker">{typeLabel(item.type)}</p>
-                <p className="mt-0.5 truncate text-sm">
-                  {item.description ?? item.title}
+                <p className="truncate text-sm">{item.description ?? item.title}</p>
+                <p className="mt-0.5 text-xs text-muted">
+                  {typeLabel(item.type)}
                 </p>
               </div>
               <span className="shrink-0 text-xs tabular-nums text-muted">

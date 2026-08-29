@@ -78,78 +78,37 @@ export function ProductDetailPage() {
       </Link>
 
       <header className="max-w-2xl">
-        <h1 className="app-heading">
-          {product.name}
-        </h1>
-        <p className="mt-2 font-mono text-sm text-neutral-600">
-          {product.product_code}
-        </p>
+        <h1 className="page-title">{product.name}</h1>
         {product.category ? (
-          <p className="mt-1 text-sm text-neutral-500">{product.category}</p>
-        ) : null}
-        {product.description ? (
-          <p className="mt-3 text-sm text-neutral-700">{product.description}</p>
+          <p className="mt-1 text-sm text-muted">{product.category}</p>
         ) : null}
       </header>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <StockQuantity quantity={product.current_quantity} size="lg" />
-        <p className="mt-1 text-sm text-neutral-500">units in stock</p>
+        <p className="mt-1 text-sm text-muted">in stock</p>
       </div>
 
-      <dl className="mt-8 grid max-w-lg grid-cols-1 gap-6 border-y border-neutral-200 py-6 sm:grid-cols-2">
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">
-            Latest purchase
-          </dt>
-          <dd className="mt-1 text-lg tabular-nums">
-            {formatMoney(product.purchase_price)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">
-            Avg unit cost
-          </dt>
-          <dd className="mt-1 text-lg tabular-nums">
-            {formatMoney(product.avg_unit_cost)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">
-            Retail
-          </dt>
-          <dd className="mt-1 text-lg tabular-nums">
-            {formatMoney(product.retail_price)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">
-            Wholesale
-          </dt>
-          <dd className="mt-1 text-lg tabular-nums">
-            {formatMoney(product.wholesale_price)}
-          </dd>
-        </div>
-      </dl>
-
       {canOperate ? (
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           {permissions.canAddInventory ? (
             <Button
               type="button"
+              className="min-h-11"
               onClick={() => setPanel(panel === 'add' ? 'none' : 'add')}
               variant={panel === 'add' ? 'primary' : 'secondary'}
             >
-              Add Stock
+              Add stock
             </Button>
           ) : null}
           {permissions.canAdjustInventory ? (
             <Button
               type="button"
+              className="min-h-11"
               onClick={() => setPanel(panel === 'adjust' ? 'none' : 'adjust')}
               variant={panel === 'adjust' ? 'primary' : 'secondary'}
             >
-              Adjust Stock
+              Fix stock
             </Button>
           ) : null}
         </div>
@@ -183,10 +142,48 @@ export function ProductDetailPage() {
         </div>
       ) : null}
 
+      <section className="mt-8 max-w-lg">
+        <h2 className="section-label mb-3">Prices</h2>
+        <dl className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm text-muted">Retail</dt>
+            <dd className="text-lg tabular-nums font-medium">
+              {formatMoney(product.retail_price)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm text-muted">Wholesale</dt>
+            <dd className="text-lg tabular-nums font-medium">
+              {formatMoney(product.wholesale_price)}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="mt-8 max-w-lg">
+        <h2 className="section-label mb-3">Cost</h2>
+        <dl className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm text-muted">Latest purchase</dt>
+            <dd className="text-lg tabular-nums font-medium">
+              {formatMoney(product.purchase_price)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm text-muted">Avg cost</dt>
+            <dd className="text-lg tabular-nums font-medium">
+              {formatMoney(product.avg_unit_cost)}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      {product.description ? (
+        <p className="mt-6 max-w-lg text-sm text-muted">{product.description}</p>
+      ) : null}
+
       <section className={panel === 'none' ? 'mt-12' : 'mt-8'}>
-        <h2 className="mb-4 text-lg font-semibold tracking-tight">
-          Inventory history
-        </h2>
+        <h2 className="section-label mb-4">Stock history</h2>
         <MovementHistory
           movements={historyQuery.data}
           isLoading={historyQuery.isLoading}

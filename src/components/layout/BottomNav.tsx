@@ -79,7 +79,7 @@ export function BottomNav({ role }: { role: UserRole }) {
               to={item.to}
               className={cn(
                 'flex min-h-[56px] min-w-[72px] flex-1 flex-col items-center justify-center gap-0.5 px-2 py-2 text-xs font-medium transition-colors',
-                active ? 'text-accent' : 'text-muted',
+                active ? 'font-bold text-accent' : 'font-medium text-muted',
               )}
             >
               <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} aria-hidden />

@@ -8,38 +8,42 @@ export function ActionTile({
   title,
   description,
   icon: Icon,
+  tone = 'violet',
   className,
 }: {
   to: string
   title: string
   description: string
   icon?: LucideIcon
+  tone?: 'violet' | 'emerald'
   className?: string
 }) {
+  const iconWrap =
+    tone === 'emerald'
+      ? 'bg-inventory-soft text-inventory dark:bg-emerald-950 dark:text-emerald-300'
+      : 'bg-accent-soft text-accent dark:bg-violet-950 dark:text-violet-300'
+
   return (
-    <Link
-      to={to}
-      className={cn(
-        'card group flex min-h-[132px] flex-col justify-between rounded-lg p-5 transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:min-h-[148px] sm:p-6',
-        className,
-      )}
-    >
-      <div>
+    <Link to={to} className={cn('portal-card group', className)}>
+      <div className="flex items-start gap-4">
         {Icon ? (
-          <Icon
-            className="mb-3 h-6 w-6 text-accent sm:mb-4 sm:h-7 sm:w-7"
-            strokeWidth={1.75}
-            aria-hidden
-          />
+          <div
+            className={cn(
+              'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
+              iconWrap,
+            )}
+          >
+            <Icon className="h-6 w-6" strokeWidth={2} aria-hidden />
+          </div>
         ) : null}
-        <p className="text-lg font-semibold uppercase tracking-wide text-foreground sm:text-xl">
-          {title}
-        </p>
-        <p className="mt-1.5 text-sm text-muted sm:text-base">{description}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-extrabold text-foreground">{title}</p>
+          <p className="mt-1 text-sm font-medium text-muted">{description}</p>
+          <p className="mt-3 text-sm font-bold text-accent group-hover:underline">
+            {title === 'Sales' ? 'Make a sale' : 'Manage stock'} →
+          </p>
+        </div>
       </div>
-      <p className="mt-4 text-sm font-medium text-accent group-hover:underline">
-        {title === 'Sales' ? 'Make a sale' : 'Manage stock'} →
-      </p>
     </Link>
   )
 }

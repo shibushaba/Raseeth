@@ -9,6 +9,9 @@ import {
 } from 'react'
 import { Link } from 'react-router-dom'
 
+import { PageHero } from '@/components/layout/PageHero'
+import { useAuth } from '@/features/auth/AuthProvider'
+
 import { Button } from '@/components/ui/button'
 import { Card, CardBody } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,7 +33,8 @@ import {
 import { PosProductResults } from '@/features/sales/components/PosProductResults'
 import { localDayBounds } from '@/lib/datetime'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
-import { formatMoney, sumCartTotal, toMoneyString } from '@/lib/money'
+import { formatMoney, lineTotal, sumCartTotal, toMoneyString } from '@/lib/money'
+import { printSaleReceipt } from '@/lib/print-sale-receipt'
 import { PAYMENT_METHOD_LABEL } from '@/lib/payment-labels'
 import type { PaymentMethod, PriceType, Product, Sale } from '@/types/database'
 import { createSaleSchema } from '@/validation/schemas'
@@ -54,10 +58,19 @@ async function invalidateAfterSale(
 
 type CompletedSale = Sale & {
   payments: Array<{ method: PaymentMethod; amount: number }>
+  receiptItems: Array<{
+    name: string
+    product_code: string
+    quantity: number
+    unit_price: number
+    line_total: number
+  }>
+  sold_by_name?: string | null
 }
 
 export function PosScreen() {
   const queryClient = useQueryClient()
+  const { profile } = useAuth()
   const searchRef = useRef<HTMLInputElement>(null)
   const submittingRef = useRef(false)
   const [search, setSearch] = useState('')
@@ -107,12 +120,24 @@ export function PosScreen() {
   const mutation = useMutation({
     mutationFn: createSale,
     onSuccess: async (sale, variables) => {
+      const receiptItems = cart.map((item) => {
+        const unitPrice = unitPriceForType(item)
+        return {
+          name: item.name,
+          product_code: item.product_code,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          line_total: lineTotal(unitPrice, item.quantity),
+        }
+      })
       setCompleted({
         ...sale,
         payments: variables.payments.map((p) => ({
           method: p.method,
           amount: p.amount,
         })),
+        receiptItems,
+        sold_by_name: profile?.full_name ?? null,
       })
       setCart([])
       setSearch('')
@@ -255,63 +280,87 @@ export function PosScreen() {
 
   if (completed) {
     const paid = completed.payments.reduce((a, p) => a + p.amount, 0)
+    const receipt = completed
+
+    function handlePrint() {
+      const ok = printSaleReceipt({
+        sale_number: receipt.sale_number,
+        created_at: receipt.created_at,
+        total_amount: Number(receipt.total_amount),
+        items: receipt.receiptItems,
+        payments: receipt.payments,
+        sold_by: receipt.sold_by_name,
+      })
+      if (!ok) {
+        window.alert('Unable to open print window. Allow pop-ups and try again.')
+      }
+    }
+
     return (
-      <Card className="mx-auto max-w-md">
+      <Card className="mx-auto max-w-md overflow-hidden">
+        <div className="hero-emerald text-center">
+          <p className="text-sm font-semibold opacity-90">Sale complete</p>
+          <p className="mt-2 text-3xl font-extrabold tabular-nums">
+            {formatMoney(completed.total_amount)}
+          </p>
+        </div>
         <CardBody className="space-y-5 py-6">
-          <div className="text-center">
-            <p className="eyebrow">Sale completed</p>
-            <p className="mt-2 font-mono text-xl font-semibold tracking-tight">
-              {completed.sale_number}
-            </p>
-          </div>
+          <p className="text-center font-mono text-sm font-bold text-muted">
+            {completed.sale_number}
+          </p>
 
-          <div className="border-t border-dashed border-border pt-4">
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="section-label">Total</span>
-              <span className="text-xl tabular-nums font-semibold">
-                {formatMoney(completed.total_amount)}
-              </span>
-            </div>
-          </div>
-
-          <div className="border-t border-dashed border-border pt-4">
-            <p className="section-label">Payment</p>
+          <div className="rounded-2xl border border-border bg-accent-soft/30 p-4 dark:bg-stone-800/40">
+            <p className="eyebrow">Payment</p>
             <ul className="mt-3 space-y-2 text-sm">
               {completed.payments.map((p, i) => (
                 <li
                   key={`${p.method}-${i}`}
-                  className="flex justify-between gap-4"
+                  className="flex justify-between gap-4 font-medium"
                 >
                   <span className="text-muted">
                     {PAYMENT_METHOD_LABEL[p.method]}
                   </span>
-                  <span className="tabular-nums">{formatMoney(p.amount)}</span>
+                  <span className="font-bold tabular-nums">
+                    {formatMoney(p.amount)}
+                  </span>
                 </li>
               ))}
-              <li className="flex justify-between gap-4 border-t border-border pt-2 font-semibold">
+              <li className="flex justify-between gap-4 border-t border-border pt-2 font-bold">
                 <span>Paid</span>
                 <span className="tabular-nums">{formatMoney(paid)}</span>
               </li>
             </ul>
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex flex-col gap-2 pt-2">
             <Button
               type="button"
               variant="accent"
+              size="lg"
+              className="w-full"
+              onClick={handlePrint}
+            >
+              Print bill
+            </Button>
+            <Button
+              type="button"
+              variant="success"
+              size="lg"
+              className="w-full"
               onClick={() => {
                 setCompleted(null)
+                setError(null)
                 mutation.reset()
                 queueMicrotask(() => searchRef.current?.focus())
               }}
             >
-              New Sale
+              New sale
             </Button>
             <Link
               to={`/sales/${completed.id}`}
-              className="inline-flex h-11 items-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-800/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="inline-flex h-12 items-center justify-center rounded-2xl border-2 border-accent bg-surface px-4 text-sm font-bold text-accent hover:bg-accent-soft/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              View Sale
+              View sale
             </Link>
           </div>
         </CardBody>
@@ -360,25 +409,27 @@ export function PosScreen() {
           disabled={!canComplete}
           onClick={completeSale}
         >
-          {mutation.isPending ? 'Completing sale…' : 'Complete Sale'}
+          {mutation.isPending ? '…' : 'Complete sale'}
         </Button>
       </section>
     ) : null
 
   return (
     <div className="space-y-6 pb-24 lg:space-y-0 lg:pb-0">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="page-title">New Sale</h1>
-          <p className="page-subtitle">Search products and check out.</p>
-        </div>
+      <PageHero
+        title="New sale"
+        subtitle="Search products and check out"
+        tone="violet"
+      />
+
+      <div className="flex justify-end">
         <Link
           to="/sales/history"
-          className="mt-1 text-sm text-muted underline-offset-2 hover:text-foreground hover:underline"
+          className="text-sm font-bold text-accent underline-offset-2 hover:underline"
         >
-          History
+          Sales history
         </Link>
-      </header>
+      </div>
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-6">
         <div className="space-y-5">

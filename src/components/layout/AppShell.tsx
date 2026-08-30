@@ -71,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
           <Link
             to={homePathFor(role)}
-            className="text-lg font-bold tracking-tight text-foreground"
+            className="text-xl font-extrabold tracking-tight text-accent"
           >
             Raseeth
           </Link>
@@ -104,8 +104,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   cn(
                     'inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold transition-colors',
                     isActive
-                      ? 'bg-primary text-white shadow-sm dark:bg-stone-100 dark:text-stone-900'
-                      : 'bg-stone-100 text-foreground hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700',
+                      ? 'bg-accent text-white shadow-sm'
+                      : 'bg-accent-soft/60 text-foreground hover:bg-accent-soft dark:bg-stone-800 dark:hover:bg-stone-700',
                   )
                 }
               >

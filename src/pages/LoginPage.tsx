@@ -45,19 +45,19 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col justify-center bg-background px-4">
-      <Card className="mx-auto w-full max-w-sm">
-        <CardBody className="py-8">
-          <div className="text-center">
-            <p className="text-2xl font-semibold tracking-tight text-foreground">
-              RASEETH
-            </p>
-            <p className="mt-2 text-sm text-muted">
-              Your business, simply managed.
-            </p>
-          </div>
+    <div className="flex min-h-dvh flex-col justify-center bg-background px-4 py-8">
+      <div className="mx-auto mb-8 text-center">
+        <p className="text-3xl font-extrabold tracking-tight text-accent">
+          Raseeth
+        </p>
+        <p className="mt-2 text-sm font-medium text-muted">
+          Your business, simply managed.
+        </p>
+      </div>
 
-          <form className="mt-8 space-y-4" onSubmit={(e) => void onSubmit(e)}>
+      <Card className="mx-auto w-full max-w-sm">
+        <CardBody className="py-6">
+          <form className="space-y-4" onSubmit={(e) => void onSubmit(e)}>
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
@@ -82,7 +82,7 @@ export function LoginPage() {
             </div>
 
             {error ? (
-              <p className="text-sm text-danger" role="alert">
+              <p className="text-sm font-medium text-danger" role="alert">
                 {error}
               </p>
             ) : null}
@@ -90,6 +90,7 @@ export function LoginPage() {
             <Button
               type="submit"
               variant="accent"
+              size="lg"
               className="w-full"
               disabled={submitting}
             >

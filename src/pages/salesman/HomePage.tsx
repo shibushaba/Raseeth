@@ -1,12 +1,11 @@
 import { Package, ShoppingCart } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 import { ActionTile } from '@/components/dashboard/ActionTile'
 import { SectionHeader } from '@/components/dashboard/SectionHeader'
+import { PageHero } from '@/components/layout/PageHero'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useQuery } from '@tanstack/react-query'
-import {
-  getRecentActivity,
-} from '@/data/api'
+import { getRecentActivity } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { ActivityPreviewList } from '@/features/activity/components/ActivityFeed'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -28,24 +27,27 @@ export function SalesmanHomePage() {
   })
 
   return (
-    <div className="mx-auto max-w-lg space-y-8">
-      <header>
-        <h1 className="page-title">{greetingForHour()}</h1>
-        <p className="page-subtitle">What do you want to do?</p>
-      </header>
+    <div className="mx-auto max-w-lg space-y-6">
+      <PageHero
+        title={greetingForHour()}
+        subtitle="What do you want to do?"
+        tone="violet"
+      />
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-3">
         <ActionTile
           to="/sales"
           title="Sales"
-          description="Make a sale"
+          description="Scan, sell, and accept payments"
           icon={ShoppingCart}
+          tone="violet"
         />
         <ActionTile
           to="/inventory"
           title="Inventory"
-          description="Manage stock"
+          description="Track stock and manage products"
           icon={Package}
+          tone="emerald"
         />
       </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
+import { Banknote, CreditCard, Smartphone } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +15,16 @@ export type SplitPaymentRow = {
   id: string
   method: PaymentMethod
   amount: string
+}
+
+const METHOD_META: Record<
+  PaymentMethod | 'SPLIT',
+  { label: string; desc: string; icon: typeof Banknote }
+> = {
+  CASH: { label: 'Cash', desc: 'Collect exact amount', icon: Banknote },
+  UPI: { label: 'UPI', desc: 'Scan and pay instantly', icon: Smartphone },
+  CARD: { label: 'Card', desc: 'Debit or credit card', icon: CreditCard },
+  SPLIT: { label: 'Split', desc: 'Cash + UPI + card', icon: Banknote },
 }
 
 export function PaymentPanel({
@@ -50,47 +61,68 @@ export function PaymentPanel({
   const excess = fromCents(Math.max(0, -remainingCents))
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      <div className="hero-violet">
+        <p className="text-sm font-semibold opacity-80">Amount to collect</p>
+        <p className="mt-1 text-3xl font-extrabold tabular-nums">
+          {formatMoney(saleTotal)}
+        </p>
+      </div>
+
       <fieldset>
-        <legend className="section-label">Payment</legend>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <legend className="eyebrow px-1">Payment method</legend>
+        <div className="mt-2 space-y-2">
           {(
-            [
-              ['CASH', 'Cash'],
-              ['UPI', 'UPI'],
-              ['CARD', 'Card'],
-              ['SPLIT', 'Split'],
-            ] as const
-          ).map(([value, label]) => (
-            <label
-              key={value}
-              className={cn(
-                'flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors',
-                mode === value
-                  ? 'border-accent bg-accent-soft text-accent dark:bg-teal-950/60 dark:text-teal-300'
-                  : 'border-border bg-surface hover:bg-stone-50 dark:hover:bg-stone-800/60',
-              )}
-            >
-              <input
-                type="radio"
-                name={groupId}
-                value={value}
-                checked={mode === value}
-                onChange={() => onModeChange(value)}
-                className="sr-only"
-              />
-              {label}
-            </label>
-          ))}
+            ['CASH', 'UPI', 'CARD', 'SPLIT'] as const
+          ).map((value) => {
+            const meta = METHOD_META[value]
+            const Icon = meta.icon
+            const selected = mode === value
+            return (
+              <label
+                key={value}
+                className={cn(
+                  'flex min-h-[52px] cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 transition-all',
+                  selected
+                    ? 'border-accent bg-accent-soft/60 dark:bg-violet-950/40'
+                    : 'border-border bg-surface hover:bg-accent-soft/30',
+                )}
+              >
+                <input
+                  type="radio"
+                  name={groupId}
+                  value={value}
+                  checked={selected}
+                  onChange={() => onModeChange(value)}
+                  className="sr-only"
+                />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent dark:bg-violet-950 dark:text-violet-300">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-foreground">{meta.label}</div>
+                  <div className="text-xs font-medium text-muted">
+                    {meta.desc}
+                  </div>
+                </div>
+                {selected ? (
+                  <span
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-white"
+                    aria-hidden
+                  >
+                    ✓
+                  </span>
+                ) : null}
+              </label>
+            )
+          })}
         </div>
       </fieldset>
 
       {mode !== 'SPLIT' ? (
-        <div className="muted-panel rounded-lg px-4 py-3">
-          <p className="eyebrow">
-            Pay with {PAYMENT_METHOD_LABEL[mode]}
-          </p>
-          <p className="mt-1 text-2xl tabular-nums font-semibold">
+        <div className="muted-panel rounded-2xl px-4 py-3">
+          <p className="eyebrow">Pay with {PAYMENT_METHOD_LABEL[mode]}</p>
+          <p className="mt-1 text-2xl font-extrabold tabular-nums">
             {formatMoney(saleTotal)}
           </p>
         </div>
@@ -191,21 +223,27 @@ export function PaymentPanel({
             Add payment
           </Button>
 
-          <div className="border-t border-dashed border-border pt-3 text-sm">
+          <div className="rounded-2xl border border-border bg-surface p-4 text-sm">
             <div className="flex justify-between gap-4">
-              <span className="text-muted">Paid</span>
-              <span className="tabular-nums font-semibold">
+              <span className="font-medium text-muted">Total</span>
+              <span className="font-bold tabular-nums">
+                {formatMoney(saleTotal)}
+              </span>
+            </div>
+            <div className="mt-2 flex justify-between gap-4">
+              <span className="font-medium text-muted">Paid</span>
+              <span className="font-bold tabular-nums">
                 {formatMoney(fromCents(paidCents))}
               </span>
             </div>
-            <div className="mt-1 flex justify-between gap-4">
-              <span className="text-muted">Remaining</span>
-              <span className="tabular-nums font-semibold">
+            <div className="mt-2 flex justify-between gap-4">
+              <span className="font-medium text-muted">Remaining</span>
+              <span className="font-bold tabular-nums">
                 {formatMoney(fromCents(Math.max(0, remainingCents)))}
               </span>
             </div>
             {showValidation && excess > 0 ? (
-              <p className="mt-2 text-sm text-danger" role="alert">
+              <p className="mt-2 text-sm font-medium text-danger" role="alert">
                 Payment exceeds sale total by {formatMoney(excess)}.
               </p>
             ) : null}

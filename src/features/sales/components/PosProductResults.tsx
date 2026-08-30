@@ -51,50 +51,46 @@ export function PosProductResults({
   const highlightId = bestMatchId(visible, search)
 
   return (
-    <div>
-      <ul className="card divide-y divide-border overflow-hidden">
-        {visible.map((product) => (
-          <li
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {visible.map((product) => {
+        const isOut = product.current_quantity <= 0
+        const isBest = product.id === highlightId
+        return (
+          <div
             key={product.id}
             className={cn(
-              'flex items-center justify-between gap-3 px-4 py-3',
-              product.id === highlightId && 'bg-accent-soft/40',
+              'card flex flex-col p-4',
+              isBest && 'ring-2 ring-accent/40',
+              isOut && 'opacity-60',
             )}
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="truncate font-medium">{product.name}</p>
-                {product.id === highlightId ? (
-                  <span className="shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
-                    Best match
-                  </span>
-                ) : null}
-              </div>
-              <p className="font-mono text-xs text-muted">
-                {product.product_code}
-              </p>
-              <p className="mt-1 text-sm text-muted">
+            <p className="truncate text-sm font-extrabold text-foreground">
+              {product.name}
+            </p>
+            <p className="mt-1 text-xs font-medium text-muted">
+              {product.current_quantity} available
+            </p>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <span className="text-base font-extrabold text-accent tabular-nums">
                 {formatMoney(product.retail_price)}
-                <span className="mx-2 text-border-strong">·</span>
-                {product.current_quantity} in stock
-              </p>
+              </span>
+              <Button
+                type="button"
+                variant="accent"
+                size="sm"
+                className="shrink-0 px-4"
+                disabled={isOut}
+                aria-label={`Add ${product.name}`}
+                onClick={() => onAdd(product)}
+              >
+                {isOut ? 'Out' : 'Add'}
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="accent"
-              size="md"
-              className="shrink-0"
-              disabled={product.current_quantity <= 0}
-              aria-label={`Add ${product.name}`}
-              onClick={() => onAdd(product)}
-            >
-              {product.current_quantity <= 0 ? 'Out of stock' : 'Add'}
-            </Button>
-          </li>
-        ))}
-      </ul>
+          </div>
+        )
+      })}
       {products.length > 8 ? (
-        <p className="mt-2 section-hint">
+        <p className="col-span-full section-hint">
           Showing 8 of {products.length}. Refine search for more.
         </p>
       ) : null}

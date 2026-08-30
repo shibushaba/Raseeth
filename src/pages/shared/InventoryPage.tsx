@@ -3,16 +3,26 @@ import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { EmptyState } from '@/components/layout/EmptyState'
+import { PageHero } from '@/components/layout/PageHero'
+import { InventoryToolbar } from '@/features/inventory/components/InventoryToolbar'
 import { Input } from '@/components/ui/input'
 import { getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { InventoryProductList } from '@/features/inventory/components/InventoryProductList'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
+import {
+  applyProductFilters,
+  type ProductSortKey,
+  type StockFilter,
+} from '@/lib/product-filters'
 
 export function InventoryPage() {
   const { permissions } = useAuth()
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState<string | null>(null)
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all')
+  const [sortKey, setSortKey] = useState<ProductSortKey>('name_asc')
   const deferredSearch = useDeferredValue(search.trim())
 
   const productsQuery = useQuery({
@@ -30,20 +40,30 @@ export function InventoryPage() {
   }, [productsQuery.error])
 
   const products = productsQuery.data ?? []
+  const filteredProducts = useMemo(
+    () =>
+      applyProductFilters(products, {
+        category,
+        stockFilter,
+        sortKey,
+      }),
+    [products, category, stockFilter, sortKey],
+  )
   const hasSearch = deferredSearch.length > 0
 
   return (
-    <div>
-      <header className="mb-6">
-        <h1 className="page-title">Inventory</h1>
-        {!productsQuery.isLoading && !errorMessage && products.length > 0 ? (
-          <p className="mt-2 text-sm font-medium text-muted">
-            {products.length} {products.length === 1 ? 'product' : 'products'}
-          </p>
-        ) : null}
-      </header>
+    <div className="mx-auto max-w-lg space-y-5 lg:max-w-none">
+      <PageHero
+        title="Inventory"
+        subtitle={
+          !productsQuery.isLoading && !errorMessage
+            ? `${filteredProducts.length} of ${products.length} products`
+            : 'Find products and manage stock'
+        }
+        tone="emerald"
+      />
 
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
           type="search"
           value={search}
@@ -80,6 +100,18 @@ export function InventoryPage() {
         </p>
       ) : null}
 
+      {!productsQuery.isLoading && !errorMessage && products.length > 0 ? (
+        <InventoryToolbar
+          products={products}
+          category={category}
+          onCategoryChange={setCategory}
+          stockFilter={stockFilter}
+          onStockFilterChange={setStockFilter}
+          sortKey={sortKey}
+          onSortChange={setSortKey}
+        />
+      ) : null}
+
       {!productsQuery.isLoading && !errorMessage && products.length === 0 ? (
         hasSearch ? (
           <EmptyState
@@ -105,7 +137,14 @@ export function InventoryPage() {
       ) : null}
 
       {!productsQuery.isLoading && !errorMessage && products.length > 0 ? (
-        <InventoryProductList products={products} />
+        filteredProducts.length > 0 ? (
+          <InventoryProductList products={filteredProducts} />
+        ) : (
+          <EmptyState
+            title="No products match."
+            description="Try another category, filter, or search term."
+          />
+        )
       ) : null}
     </div>
   )

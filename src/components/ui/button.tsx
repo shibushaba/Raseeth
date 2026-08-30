@@ -4,18 +4,21 @@ import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-40',
+  'inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-40 active:scale-[0.98]',
   {
     variants: {
       variant: {
         primary:
-          'bg-primary text-white shadow-sm hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200',
+          'bg-accent text-white shadow-md hover:bg-violet-700 dark:hover:bg-violet-500',
         secondary:
-          'border border-border bg-surface text-foreground shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800/60',
+          'border-2 border-accent bg-surface text-accent hover:bg-accent-soft/50 dark:hover:bg-stone-800/60',
         ghost:
-          'bg-transparent text-foreground hover:bg-stone-100 dark:hover:bg-stone-800/60',
-        accent: 'bg-accent text-white shadow-sm hover:bg-teal-700',
-        danger: 'bg-danger text-white shadow-sm hover:bg-red-800',
+          'bg-transparent text-foreground hover:bg-accent-soft/60 dark:hover:bg-stone-800/60',
+        accent:
+          'bg-accent text-white shadow-md hover:bg-violet-700 dark:hover:bg-violet-500',
+        success:
+          'bg-success text-white shadow-md hover:bg-emerald-600',
+        danger: 'bg-danger text-white shadow-md hover:bg-red-600',
       },
       size: {
         sm: 'h-10 px-3.5 text-sm',

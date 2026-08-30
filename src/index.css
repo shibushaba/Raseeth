@@ -1,60 +1,66 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
 @import 'tailwindcss';
 
 /*
-  Modern minimal business app — warm, spacious, approachable.
+  Reference-aligned simple mobile POS — Nunito, violet primary, soft lavender canvas.
 */
 @theme {
-  --font-sans: 'DM Sans', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Nunito', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
 
-  --color-background: #f8f7f4;
+  --color-background: #f5f3ff;
   --color-surface: #ffffff;
-  --color-foreground: #1c1917;
-  --color-muted: #78716c;
-  --color-border: #e7e5e4;
-  --color-border-strong: #d6d3d1;
-  --color-primary: #1c1917;
-  --color-accent: #0d9488;
-  --color-accent-soft: #ccfbf1;
-  --color-success: #15803d;
-  --color-success-soft: #dcfce7;
-  --color-warning: #b45309;
-  --color-warning-soft: #fef3c7;
-  --color-danger: #b91c1c;
-  --color-danger-soft: #fee2e2;
+  --color-foreground: #1f2937;
+  --color-muted: #6b7280;
+  --color-border: #ede9fe;
+  --color-border-strong: #ddd6fe;
+  --color-primary: #7c3aed;
+  --color-accent: #7c3aed;
+  --color-accent-soft: #ede9fe;
+  --color-success: #10b981;
+  --color-success-soft: #ecfdf5;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fffbeb;
+  --color-danger: #ef4444;
+  --color-danger-soft: #fef2f2;
+  --color-inventory: #10b981;
+  --color-inventory-soft: #ecfdf5;
+  --color-owner: #4338ca;
 
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
 
-  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
-  --shadow-md: 0 4px 16px rgba(28, 25, 23, 0.08);
-  --shadow-dialog: 0 12px 40px rgba(28, 25, 23, 0.12);
+  --shadow-sm: 0 1px 2px rgba(124, 58, 237, 0.06);
+  --shadow-md: 0 4px 16px rgba(124, 58, 237, 0.1);
+  --shadow-dialog: 0 12px 40px rgba(124, 58, 237, 0.14);
 
   --bottom-nav-height: 3.5rem;
 }
 
 .dark {
-  --color-background: #141312;
-  --color-surface: #1c1a19;
-  --color-foreground: #f5f5f4;
-  --color-muted: #a8a29e;
-  --color-border: #292524;
-  --color-border-strong: #44403c;
-  --color-primary: #f5f5f4;
-  --color-accent: #2dd4bf;
-  --color-accent-soft: #134e4a;
-  --color-success: #4ade80;
-  --color-success-soft: #14532d;
+  --color-background: #17141f;
+  --color-surface: #221c2e;
+  --color-foreground: #f3f4f6;
+  --color-muted: #9ca3af;
+  --color-border: #3b3260;
+  --color-border-strong: #4c4178;
+  --color-primary: #a78bfa;
+  --color-accent: #a78bfa;
+  --color-accent-soft: #3b2667;
+  --color-success: #34d399;
+  --color-success-soft: #064e3b;
   --color-warning: #fbbf24;
   --color-warning-soft: #78350f;
   --color-danger: #f87171;
   --color-danger-soft: #7f1d1d;
+  --color-inventory: #34d399;
+  --color-inventory-soft: #064e3b;
+  --color-owner: #818cf8;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
-  --shadow-dialog: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-dialog: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
 @layer base {
@@ -64,6 +70,7 @@
 
   body {
     @apply m-0 min-h-dvh bg-background font-sans text-foreground;
+    -webkit-tap-highlight-color: transparent;
   }
 
   #root {
@@ -85,39 +92,54 @@
 
 @layer components {
   .card {
-    @apply rounded-xl border border-border bg-surface shadow-sm;
+    @apply rounded-2xl border border-border bg-surface shadow-sm;
   }
 
   .page-title {
-    @apply text-2xl font-semibold tracking-tight text-foreground sm:text-3xl;
+    @apply text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl;
   }
 
   .page-subtitle {
-    @apply mt-1 text-base text-muted;
+    @apply mt-1 text-sm font-medium text-muted;
   }
 
   .section-label {
-    @apply text-sm font-semibold text-foreground;
+    @apply text-sm font-bold text-foreground;
   }
 
   .section-hint {
-    @apply text-sm text-muted;
+    @apply text-sm font-medium text-muted;
   }
 
   .eyebrow {
-    @apply text-xs font-medium uppercase tracking-wider text-muted;
+    @apply text-xs font-bold uppercase tracking-wider text-muted;
   }
 
-  /* Dark-mode-safe surfaces (avoid light gray tracks on dark pages) */
   .inset-well {
-    @apply bg-stone-100/80 dark:bg-stone-800/80;
+    @apply bg-accent-soft/70 dark:bg-stone-800/80;
   }
 
   .row-hover {
-    @apply transition-colors hover:bg-stone-50 focus-visible:bg-stone-50 dark:hover:bg-stone-800/50 dark:focus-visible:bg-stone-800/50;
+    @apply transition-colors hover:bg-accent-soft/40 focus-visible:bg-accent-soft/40 dark:hover:bg-stone-800/50 dark:focus-visible:bg-stone-800/50;
   }
 
   .muted-panel {
-    @apply bg-stone-50 dark:bg-stone-800/50;
+    @apply bg-accent-soft/50 dark:bg-stone-800/50;
+  }
+
+  .hero-violet {
+    @apply rounded-2xl bg-accent p-5 text-white shadow-md;
+  }
+
+  .hero-emerald {
+    @apply rounded-2xl bg-success p-5 text-white shadow-md;
+  }
+
+  .stat-tile {
+    @apply rounded-2xl p-4 text-white shadow-sm;
+  }
+
+  .portal-card {
+    @apply block rounded-2xl border border-border bg-surface p-5 shadow-sm transition-shadow hover:shadow-md active:scale-[0.99];
   }
 }

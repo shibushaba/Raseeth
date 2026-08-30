@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
+import { CategoryField } from '@/features/inventory/components/CategoryField'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -106,10 +107,7 @@ export function CreateProductForm() {
         <Textarea id="description" name="description" rows={3} />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="category">Category (optional)</Label>
-        <Input id="category" name="category" />
-      </div>
+      <CategoryField />
 
       <div className="grid gap-5 sm:grid-cols-3">
         <div className="space-y-2">

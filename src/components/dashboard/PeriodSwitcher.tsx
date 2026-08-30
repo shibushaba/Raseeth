@@ -17,7 +17,7 @@ export function PeriodSwitcher({
 }) {
   return (
     <div
-      className="inset-well inline-flex flex-wrap gap-1 rounded-xl p-1"
+      className="inset-well inline-flex flex-wrap gap-1 rounded-2xl p-1"
       role="tablist"
       aria-label="Time period"
     >
@@ -29,9 +29,9 @@ export function PeriodSwitcher({
           aria-selected={value === opt.key}
           onClick={() => onChange(opt.key)}
           className={cn(
-            'min-h-11 rounded-lg px-4 text-sm font-medium transition-colors',
+            'min-h-11 rounded-xl px-4 text-sm font-bold transition-colors',
             value === opt.key
-              ? 'bg-surface text-foreground shadow-sm'
+              ? 'bg-surface text-accent shadow-sm'
               : 'text-stone-600 hover:text-foreground dark:text-stone-300 dark:hover:text-foreground',
           )}
         >

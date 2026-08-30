@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
+import { Button } from '@/components/ui/button'
 import { Card, CardBody } from '@/components/ui/card'
 import { getSale } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { formatDateTime } from '@/lib/format'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, lineTotal } from '@/lib/money'
+import { printSaleReceipt } from '@/lib/print-sale-receipt'
 import { PAYMENT_METHOD_LABEL } from '@/lib/payment-labels'
 
 export function SaleDetailPage() {
@@ -53,6 +55,26 @@ export function SaleDetailPage() {
     permissions.canCreateReturn &&
     sale.items.some((i) => i.remaining_quantity > 0)
 
+  function handlePrint() {
+    printSaleReceipt({
+      sale_number: sale.sale_number,
+      created_at: sale.created_at,
+      total_amount: Number(sale.total_amount),
+      items: sale.items.map((item) => ({
+        name: item.product_name ?? 'Product',
+        product_code: item.product_code,
+        quantity: item.quantity,
+        unit_price: Number(item.unit_price),
+        line_total: lineTotal(Number(item.unit_price), item.quantity),
+      })),
+      payments: sale.payments.map((p) => ({
+        method: p.payment_method,
+        amount: Number(p.amount),
+      })),
+      sold_by: sale.created_by_name,
+    })
+  }
+
   return (
     <div className="mx-auto max-w-lg">
       <Link
@@ -83,6 +105,12 @@ export function SaleDetailPage() {
               </Link>
             ) : null}
           </header>
+
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={handlePrint}>
+              Print bill
+            </Button>
+          </div>
 
           <div className="border-t border-dashed border-border pt-4">
             <p className="section-label mb-3">Items</p>

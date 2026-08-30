@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { InsightCard } from '@/components/dashboard/InsightCard'
-import { MetricCard } from '@/components/dashboard/MetricCard'
+import { StatTile } from '@/components/dashboard/MetricCard'
+import { PageHero } from '@/components/layout/PageHero'
 import { PeriodSwitcher } from '@/components/dashboard/PeriodSwitcher'
 import { SectionHeader } from '@/components/dashboard/SectionHeader'
 import { TrendChart } from '@/components/dashboard/TrendChart'
@@ -24,7 +25,6 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import {
   dashboardRangeBounds,
   formatTime,
-  greetingForHour,
   trendBucketLabel,
   type DashboardRangeKey,
 } from '@/lib/datetime'
@@ -100,36 +100,38 @@ export function OwnerOverviewPage() {
     : 0
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 lg:max-w-none">
-      <header className="space-y-4">
-        <div>
-          <h1 className="page-title">{greetingForHour()}</h1>
-          <p className="page-subtitle">Your store at a glance</p>
+    <div className="mx-auto max-w-3xl space-y-5 lg:max-w-none">
+      <PageHero
+        title={
+          summary?.hasSales ? formatMoney(summary.netSales) : '₹0'
+        }
+        subtitle="Sales"
+        tone="owner"
+      >
+        <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold">
+          <span>
+            <span className="opacity-70">Profit </span>
+            {summary?.grossProfit != null ? formatMoney(summary.grossProfit) : '—'}
+          </span>
+          <span>
+            <span className="opacity-70">Margin </span>
+            {formatMargin(summary?.grossMargin ?? null)}
+          </span>
         </div>
-        <PeriodSwitcher value={range} onChange={setRange} />
-      </header>
+      </PageHero>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        <MetricCard
-          label="Sales"
-          value={
-            summary?.hasSales ? formatMoney(summary.netSales) : '₹0'
-          }
-          loading={summaryQuery.isLoading}
+      <PeriodSwitcher value={range} onChange={setRange} />
+
+      <div className="grid grid-cols-2 gap-3">
+        <StatTile
+          label="Products"
+          value={inv?.total_products ?? 0}
+          colorClass="bg-accent"
         />
-        <MetricCard
-          label="Profit"
-          value={
-            summary?.grossProfit === null || summary?.grossProfit === undefined
-              ? '—'
-              : formatMoney(summary.grossProfit)
-          }
-          loading={summaryQuery.isLoading}
-        />
-        <MetricCard
-          label="Margin"
-          value={formatMargin(summary?.grossMargin ?? null)}
-          loading={summaryQuery.isLoading}
+        <StatTile
+          label="Need attention"
+          value={(inv?.low_stock ?? 0) + (inv?.out_of_stock ?? 0)}
+          colorClass="bg-danger"
         />
       </div>
 

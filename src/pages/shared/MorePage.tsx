@@ -1,14 +1,20 @@
-import { Activity, MessageSquare, Search, Settings } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
+import { AppIcon } from '@/components/ui/icon'
 import { Card, CardBody } from '@/components/ui/card'
 import { getUnreadMessageCount } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { Link } from 'react-router-dom'
-
 import { useGlobalSearch } from '@/features/search/SearchContext'
+import {
+  Activity01Icon,
+  ArrowRight01Icon,
+  Message01Icon,
+  Search01Icon,
+  Settings01Icon,
+} from '@/lib/icons'
 
 export function MorePage() {
   const { signOut } = useAuth()
@@ -24,57 +30,48 @@ export function MorePage() {
   const items = [
     {
       label: 'Activity',
-      description: 'Recent sales and stock updates',
       to: '/activity',
-      icon: Activity,
+      icon: Activity01Icon,
     },
     {
       label: 'Messages',
-      description:
-        unread > 0
-          ? `${unread} unread message${unread === 1 ? '' : 's'}`
-          : 'Talk with your team',
       to: '/messages',
-      icon: MessageSquare,
+      icon: Message01Icon,
       badge: unread > 0 ? unread : undefined,
     },
     {
       label: 'Search',
-      description: 'Find products, sales, and returns',
       action: openSearch,
-      icon: Search,
+      icon: Search01Icon,
     },
     {
       label: 'Settings',
-      description: 'Appearance and account',
       to: '/settings',
-      icon: Settings,
+      icon: Settings01Icon,
     },
   ]
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <PageHeader title="More" description="Activity, messages, and settings." />
+      <PageHeader title="More" />
 
       <ul className="space-y-2">
         {items.map((item) => {
-          const Icon = item.icon
           const inner = (
             <Card className="transition-shadow hover:shadow-md">
               <CardBody className="flex items-center gap-4 py-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent dark:bg-teal-950 dark:text-teal-300">
-                  <Icon className="h-5 w-5" aria-hidden />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent dark:bg-violet-950 dark:text-violet-300">
+                  <AppIcon icon={item.icon} size="md" />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground">{item.label}</p>
-                  <p className="text-sm text-muted">{item.description}</p>
-                </div>
+                <p className="min-w-0 flex-1 font-bold text-foreground">
+                  {item.label}
+                </p>
                 {item.badge ? (
-                  <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-white">
+                  <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-white">
                     {item.badge}
                   </span>
                 ) : (
-                  <span className="text-muted">→</span>
+                  <AppIcon icon={ArrowRight01Icon} size="sm" className="text-muted" />
                 )}
               </CardBody>
             </Card>
@@ -107,7 +104,7 @@ export function MorePage() {
       <button
         type="button"
         onClick={() => void signOut()}
-        className="w-full rounded-lg border border-border py-3 text-sm font-medium text-muted hover:bg-stone-50 hover:text-foreground dark:hover:bg-stone-900"
+        className="w-full rounded-2xl border border-border py-3 text-sm font-bold text-muted hover:bg-accent-soft/30 hover:text-foreground"
       >
         Sign out
       </button>

@@ -138,18 +138,13 @@ export function OwnerOverviewPage() {
       {!summaryQuery.isLoading && summary && !summary.hasSales ? (
         <Card>
           <CardBody className="py-8 text-center">
-            <p className="text-base font-medium text-foreground">No sales yet.</p>
-            <p className="mt-2 text-sm text-muted">
-              Your store&apos;s performance will appear here once you start
-              selling.
-            </p>
+            <p className="text-base font-bold text-foreground">No sales yet</p>
           </CardBody>
         </Card>
       ) : null}
 
       <TrendChart
         title="Sales"
-        subtitle="Is business going up or down?"
         data={trendData}
         loading={trendQuery.isLoading}
         showProfit={false}
@@ -194,7 +189,7 @@ export function OwnerOverviewPage() {
         <section>
           <SectionHeader
             title="Inventory"
-            actionLabel="View inventory"
+            actionLabel="Inventory"
             actionTo="/inventory"
           />
           {inventoryQuery.isLoading ? (

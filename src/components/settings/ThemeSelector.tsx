@@ -18,7 +18,7 @@ export function ThemeSelector() {
           <label
             key={opt.value}
             className={cn(
-              'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors',
+              'flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors',
               theme === opt.value
                 ? 'border-accent bg-accent-soft/40 dark:bg-teal-950/40'
                 : 'border-border hover:bg-stone-50 dark:hover:bg-stone-900',

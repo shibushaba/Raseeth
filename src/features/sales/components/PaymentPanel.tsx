@@ -1,9 +1,16 @@
+import type { IconSvgElement } from '@hugeicons/react'
 import { useEffect, useId, useRef } from 'react'
-import { Banknote, CreditCard, Smartphone } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { AppIcon } from '@/components/ui/icon'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import {
+  BanknoteIcon,
+  CreditCardIcon,
+  Money03Icon,
+  SmartPhone01Icon,
+} from '@/lib/icons'
 import { formatMoney, fromCents, parseMoney, toCents } from '@/lib/money'
 import { PAYMENT_METHOD_LABEL } from '@/lib/payment-labels'
 import type { PaymentMethod } from '@/types/database'
@@ -19,12 +26,12 @@ export type SplitPaymentRow = {
 
 const METHOD_META: Record<
   PaymentMethod | 'SPLIT',
-  { label: string; desc: string; icon: typeof Banknote }
+  { label: string; icon: IconSvgElement }
 > = {
-  CASH: { label: 'Cash', desc: 'Collect exact amount', icon: Banknote },
-  UPI: { label: 'UPI', desc: 'Scan and pay instantly', icon: Smartphone },
-  CARD: { label: 'Card', desc: 'Debit or credit card', icon: CreditCard },
-  SPLIT: { label: 'Split', desc: 'Cash + UPI + card', icon: Banknote },
+  CASH: { label: 'Cash', icon: BanknoteIcon },
+  UPI: { label: 'UPI', icon: SmartPhone01Icon },
+  CARD: { label: 'Card', icon: CreditCardIcon },
+  SPLIT: { label: 'Split', icon: Money03Icon },
 }
 
 export function PaymentPanel({
@@ -70,19 +77,16 @@ export function PaymentPanel({
       </div>
 
       <fieldset>
-        <legend className="eyebrow px-1">Payment method</legend>
-        <div className="mt-2 space-y-2">
-          {(
-            ['CASH', 'UPI', 'CARD', 'SPLIT'] as const
-          ).map((value) => {
+        <legend className="eyebrow px-1">Payment</legend>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {(['CASH', 'UPI', 'CARD', 'SPLIT'] as const).map((value) => {
             const meta = METHOD_META[value]
-            const Icon = meta.icon
             const selected = mode === value
             return (
               <label
                 key={value}
                 className={cn(
-                  'flex min-h-[52px] cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 transition-all',
+                  'flex min-h-[72px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center transition-all',
                   selected
                     ? 'border-accent bg-accent-soft/60 dark:bg-violet-950/40'
                     : 'border-border bg-surface hover:bg-accent-soft/30',
@@ -96,23 +100,14 @@ export function PaymentPanel({
                   onChange={() => onModeChange(value)}
                   className="sr-only"
                 />
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent dark:bg-violet-950 dark:text-violet-300">
-                  <Icon className="h-5 w-5" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold text-foreground">{meta.label}</div>
-                  <div className="text-xs font-medium text-muted">
-                    {meta.desc}
-                  </div>
-                </div>
-                {selected ? (
-                  <span
-                    className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-white"
-                    aria-hidden
-                  >
-                    ✓
-                  </span>
-                ) : null}
+                <AppIcon
+                  icon={meta.icon}
+                  size="lg"
+                  className={selected ? 'text-accent' : 'text-muted'}
+                />
+                <span className="text-sm font-bold text-foreground">
+                  {meta.label}
+                </span>
               </label>
             )
           })}
@@ -120,10 +115,12 @@ export function PaymentPanel({
       </fieldset>
 
       {mode !== 'SPLIT' ? (
-        <div className="muted-panel rounded-2xl px-4 py-3">
-          <p className="eyebrow">Pay with {PAYMENT_METHOD_LABEL[mode]}</p>
-          <p className="mt-1 text-2xl font-extrabold tabular-nums">
+        <div className="muted-panel rounded-2xl px-4 py-3 text-center">
+          <p className="text-2xl font-extrabold tabular-nums">
             {formatMoney(saleTotal)}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-muted">
+            {PAYMENT_METHOD_LABEL[mode]}
           </p>
         </div>
       ) : (
@@ -238,13 +235,22 @@ export function PaymentPanel({
             </div>
             <div className="mt-2 flex justify-between gap-4">
               <span className="font-medium text-muted">Remaining</span>
-              <span className="font-bold tabular-nums">
+              <span
+                className={cn(
+                  'font-bold tabular-nums',
+                  remainingCents === 0
+                    ? 'text-success'
+                    : remainingCents > 0
+                      ? 'text-danger'
+                      : 'text-warning',
+                )}
+              >
                 {formatMoney(fromCents(Math.max(0, remainingCents)))}
               </span>
             </div>
             {showValidation && excess > 0 ? (
               <p className="mt-2 text-sm font-medium text-danger" role="alert">
-                Payment exceeds sale total by {formatMoney(excess)}.
+                Over by {formatMoney(excess)}
               </p>
             ) : null}
             {showValidation && remainingCents > 0 ? (

@@ -1,7 +1,8 @@
-import { Eye, EyeOff } from 'lucide-react'
 import { forwardRef, useState } from 'react'
 
+import { AppIcon } from '@/components/ui/icon'
 import { Input, type InputProps } from '@/components/ui/input'
+import { EyeIcon, EyeOffIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 export const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
@@ -23,11 +24,12 @@ export const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
           aria-label={visible ? 'Hide password' : 'Show password'}
           tabIndex={0}
         >
-          {visible ? (
-            <EyeOff className="h-5 w-5" aria-hidden />
-          ) : (
-            <Eye className="h-5 w-5" aria-hidden />
-          )}
+          <AppIcon
+            icon={EyeIcon}
+            altIcon={EyeOffIcon}
+            showAlt={visible}
+            size="md"
+          />
         </button>
       </div>
     )

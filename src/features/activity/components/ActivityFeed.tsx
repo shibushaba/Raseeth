@@ -13,7 +13,7 @@ function typeLabel(type: ActivityItem['type']): string {
     case 'STOCK_ADDED':
       return 'Stock added'
     case 'STOCK_ADJUSTED':
-      return 'Stock adjusted'
+      return 'Stock fix'
     case 'PRODUCT_CREATED':
       return 'Product created'
     case 'MESSAGE':

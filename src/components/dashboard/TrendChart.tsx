@@ -52,7 +52,7 @@ export function TrendChart({
   showProfit = false,
 }: {
   title: string
-  subtitle: string
+  subtitle?: string
   data: TrendPoint[]
   loading?: boolean
   showProfit?: boolean

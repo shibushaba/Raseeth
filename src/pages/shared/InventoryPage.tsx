@@ -57,8 +57,8 @@ export function InventoryPage() {
         title="Inventory"
         subtitle={
           !productsQuery.isLoading && !errorMessage
-            ? `${filteredProducts.length} of ${products.length} products`
-            : 'Find products and manage stock'
+            ? `${filteredProducts.length} products`
+            : undefined
         }
         tone="emerald"
       />

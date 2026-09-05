@@ -1,4 +1,3 @@
-import { Package, ShoppingCart } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { ActionTile } from '@/components/dashboard/ActionTile'
@@ -10,6 +9,7 @@ import { queryKeys } from '@/data/query-keys'
 import { ActivityPreviewList } from '@/features/activity/components/ActivityFeed'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { greetingForHour } from '@/lib/datetime'
+import { Package01Icon, ShoppingCart01Icon } from '@/lib/icons'
 
 /** Salesman home — two dominant actions: Sales + Inventory. */
 export function SalesmanHomePage() {
@@ -28,31 +28,25 @@ export function SalesmanHomePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <PageHero
-        title={greetingForHour()}
-        subtitle="What do you want to do?"
-        tone="violet"
-      />
+      <PageHero title={greetingForHour()} tone="violet" />
 
       <div className="grid grid-cols-1 gap-3">
         <ActionTile
           to="/sales"
           title="Sales"
-          description="Scan, sell, and accept payments"
-          icon={ShoppingCart}
+          icon={ShoppingCart01Icon}
           tone="violet"
         />
         <ActionTile
           to="/inventory"
           title="Inventory"
-          description="Track stock and manage products"
-          icon={Package}
+          icon={Package01Icon}
           tone="emerald"
         />
       </div>
 
       <section>
-        <SectionHeader title="Recent" actionLabel="View all" actionTo="/activity" />
+        <SectionHeader title="Recent" actionLabel="All" actionTo="/activity" />
         {activityQuery.isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-14 w-full" />
@@ -61,7 +55,7 @@ export function SalesmanHomePage() {
         ) : (
           <ActivityPreviewList
             items={(activityQuery.data ?? []).slice(0, 5)}
-            emptyLabel="No sales yet. Your completed sales will appear here."
+            emptyLabel="No activity yet"
           />
         )}
       </section>

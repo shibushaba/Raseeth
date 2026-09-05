@@ -31,8 +31,17 @@ export function PageHero({
         className,
       )}
     >
-      <p className="text-sm font-semibold opacity-80">{subtitle}</p>
-      <h1 className="mt-0.5 text-2xl font-extrabold tracking-tight">{title}</h1>
+      {subtitle ? (
+        <p className="text-sm font-semibold opacity-80">{subtitle}</p>
+      ) : null}
+      <h1
+        className={cn(
+          'text-2xl font-extrabold tracking-tight',
+          subtitle ? 'mt-0.5' : '',
+        )}
+      >
+        {title}
+      </h1>
       {children}
     </div>
   )

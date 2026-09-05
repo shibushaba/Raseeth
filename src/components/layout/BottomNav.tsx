@@ -1,31 +1,32 @@
-import {
-  Home,
-  LayoutGrid,
-  Package,
-  ShoppingCart,
-  type LucideIcon,
-} from 'lucide-react'
+import type { IconSvgElement } from '@hugeicons/react'
 import { NavLink, useLocation } from 'react-router-dom'
 
+import { AppIcon } from '@/components/ui/icon'
+import {
+  GridViewIcon,
+  Home01Icon,
+  Package01Icon,
+  ShoppingCart01Icon,
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types/database'
 
 type NavDef = {
   label: string
   to: string
-  icon: LucideIcon
+  icon: IconSvgElement
   isActive?: (pathname: string) => boolean
 }
 
 function salesmanNav(): NavDef[] {
   return [
-    { label: 'Home', to: '/home', icon: Home },
-    { label: 'Sales', to: '/sales', icon: ShoppingCart },
-    { label: 'Inventory', to: '/inventory', icon: Package },
+    { label: 'Home', to: '/home', icon: Home01Icon },
+    { label: 'Sales', to: '/sales', icon: ShoppingCart01Icon },
+    { label: 'Inventory', to: '/inventory', icon: Package01Icon },
     {
       label: 'More',
       to: '/more',
-      icon: LayoutGrid,
+      icon: GridViewIcon,
       isActive: (p) =>
         p.startsWith('/more') ||
         p.startsWith('/activity') ||
@@ -37,13 +38,13 @@ function salesmanNav(): NavDef[] {
 
 function ownerNav(): NavDef[] {
   return [
-    { label: 'Overview', to: '/overview', icon: Home },
-    { label: 'Sales', to: '/sales', icon: ShoppingCart },
-    { label: 'Inventory', to: '/inventory', icon: Package },
+    { label: 'Overview', to: '/overview', icon: Home01Icon },
+    { label: 'Sales', to: '/sales', icon: ShoppingCart01Icon },
+    { label: 'Inventory', to: '/inventory', icon: Package01Icon },
     {
       label: 'More',
       to: '/more',
-      icon: LayoutGrid,
+      icon: GridViewIcon,
       isActive: (p) =>
         p.startsWith('/more') ||
         p.startsWith('/activity') ||
@@ -65,7 +66,6 @@ export function BottomNav({ role }: { role: UserRole }) {
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around">
         {items.map((item) => {
-          const Icon = item.icon
           const active = item.isActive
             ? item.isActive(location.pathname)
             : location.pathname === item.to ||
@@ -82,7 +82,11 @@ export function BottomNav({ role }: { role: UserRole }) {
                 active ? 'font-bold text-accent' : 'font-medium text-muted',
               )}
             >
-              <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} aria-hidden />
+              <AppIcon
+                icon={item.icon}
+                size="md"
+                strokeWidth={active ? 2.25 : 1.75}
+              />
               <span>{item.label}</span>
             </NavLink>
           )

@@ -10,11 +10,13 @@ import {
 import { Link } from 'react-router-dom'
 
 import { PageHero } from '@/components/layout/PageHero'
+import { AppIcon } from '@/components/ui/icon'
 import { useAuth } from '@/features/auth/AuthProvider'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardBody } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { CheckmarkCircle02Icon, PrinterIcon } from '@/lib/icons'
 import { createSale, getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import {
@@ -299,6 +301,9 @@ export function PosScreen() {
     return (
       <Card className="mx-auto max-w-md overflow-hidden">
         <div className="hero-emerald text-center">
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
+            <AppIcon icon={CheckmarkCircle02Icon} size={36} />
+          </div>
           <p className="text-sm font-semibold opacity-90">Sale complete</p>
           <p className="mt-2 text-3xl font-extrabold tabular-nums">
             {formatMoney(completed.total_amount)}
@@ -337,9 +342,10 @@ export function PosScreen() {
               type="button"
               variant="accent"
               size="lg"
-              className="w-full"
+              className="w-full gap-2"
               onClick={handlePrint}
             >
+              <AppIcon icon={PrinterIcon} size="md" />
               Print bill
             </Button>
             <Button
@@ -416,18 +422,14 @@ export function PosScreen() {
 
   return (
     <div className="space-y-6 pb-24 lg:space-y-0 lg:pb-0">
-      <PageHero
-        title="New sale"
-        subtitle="Search products and check out"
-        tone="violet"
-      />
+      <PageHero title="New sale" tone="violet" />
 
       <div className="flex justify-end">
         <Link
           to="/sales/history"
           className="text-sm font-bold text-accent underline-offset-2 hover:underline"
         >
-          Sales history
+          History
         </Link>
       </div>
 
@@ -439,7 +441,7 @@ export function PosScreen() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={onSearchKeyDown}
-            placeholder="Search product or Product ID…"
+            placeholder="Search products…"
             aria-label="Search products"
           />
 
@@ -456,19 +458,11 @@ export function PosScreen() {
               search={deferredSearch}
               onAdd={addProduct}
             />
-            {deferredSearch &&
-            !productsQuery.isFetching &&
-            (productsQuery.data?.length ?? 0) > 0 ? (
-              <p className="mt-2 section-hint">
-                Press Enter to add the highlighted best match (exact Product ID
-                first).
-              </p>
-            ) : null}
           </section>
 
           <Card>
             <CardBody className="py-4">
-              <h2 className="section-label mb-3">Your sale</h2>
+              <h2 className="section-label mb-3">Cart</h2>
               <CartPanel
                 items={cart}
                 onQuantityChange={(productId, quantity) => {
@@ -520,8 +514,8 @@ export function PosScreen() {
               {cart.length > 0 ? (
                 checkoutBlock
               ) : (
-                <p className="section-hint">
-                  Add products to see total and payment.
+                <p className="text-center text-sm font-medium text-muted">
+                  Add products to check out
                 </p>
               )}
             </CardBody>

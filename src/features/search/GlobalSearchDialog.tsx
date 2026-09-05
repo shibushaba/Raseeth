@@ -10,7 +10,9 @@ import {
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
+import { AppIcon } from '@/components/ui/icon'
 import { Input } from '@/components/ui/input'
+import { Search01Icon } from '@/lib/icons'
 import { globalSearch } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import {
@@ -41,10 +43,8 @@ export function GlobalSearchTrigger({
         aria-label="Open search"
         aria-keyshortcuts="Control+K Meta+K"
       >
-        <span aria-hidden className="text-muted">
-          ⌕
-        </span>
-        Search…
+        <AppIcon icon={Search01Icon} size="sm" className="text-muted" />
+        Search
         <kbd className="ml-2 hidden rounded-md border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted md:inline">
           ⌘K
         </kbd>
@@ -57,9 +57,7 @@ export function GlobalSearchTrigger({
         onClick={onOpen}
         aria-label="Open search"
       >
-        <span aria-hidden className="text-lg">
-          ⌕
-        </span>
+        <AppIcon icon={Search01Icon} size="md" />
       </Button>
     </>
   )

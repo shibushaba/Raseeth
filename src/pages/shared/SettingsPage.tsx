@@ -7,7 +7,7 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-8">
-      <PageHeader title="Settings" description="Appearance and account." />
+      <PageHeader title="Settings" />
 
       <ThemeSelector />
 
@@ -15,7 +15,7 @@ export function SettingsPage() {
         <button
           type="button"
           onClick={() => void signOut()}
-          className="w-full rounded-lg border border-border py-3 text-sm font-medium text-muted hover:bg-stone-50 hover:text-foreground dark:hover:bg-stone-900"
+          className="w-full rounded-2xl border border-border py-3 text-sm font-bold text-muted hover:bg-accent-soft/30 hover:text-foreground"
         >
           Log out
         </button>

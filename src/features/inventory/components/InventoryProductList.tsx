@@ -34,7 +34,7 @@ export function InventoryProductList({ products }: { products: Product[] }) {
                         : 'text-warning',
                     )}
                   >
-                    {stockLabel}
+                    {stockLabel === 'Out of stock' ? 'Out' : 'Low'}
                   </span>
                 ) : null}
               </div>

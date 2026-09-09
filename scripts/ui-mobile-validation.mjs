@@ -96,27 +96,22 @@ function fail(name, detail = '') {
 // --- Navigation mirrors ---
 {
   const roles = readFileSync(join(root, 'src/lib/roles.ts'), 'utf8')
-  const bottom = readFileSync(join(root, 'src/components/layout/BottomNav.tsx'), 'utf8')
+  const sectionNav = readFileSync(
+    join(root, 'src/components/layout/portal/SectionNav.tsx'),
+    'utf8',
+  )
 
   if (roles.includes("label: 'Settings', to: '/settings'"))
     pass('Settings route in desktop nav')
   else fail('Settings route in desktop nav')
 
-  if (bottom.includes("label: 'More'") && bottom.includes("to: '/more'"))
-    pass('Bottom nav includes More')
-  else fail('Bottom nav includes More')
+  if (sectionNav.includes("to: '/sales'") && sectionNav.includes("to: '/inventory'"))
+    pass('Section nav includes Sales and Inventory')
+  else fail('Section nav includes Sales and Inventory')
 
-  if (bottom.includes("label: 'Home'") && bottom.includes("label: 'Sales'"))
-    pass('Bottom nav primary items')
-  else fail('Bottom nav primary items')
-}
-
-// --- Salesman home tiles ---
-{
-  const home = readFileSync(join(root, 'src/pages/salesman/HomePage.tsx'), 'utf8')
-  if (home.includes('to="/sales"') && home.includes('to="/inventory"'))
-    pass('Salesman tiles link to sales and inventory')
-  else fail('Salesman tiles link to sales and inventory')
+  if (roles.includes("return role === 'OWNER' ? '/overview' : '/sales'"))
+    pass('Salesman home routes to sales')
+  else fail('Salesman home routes to sales')
 }
 
 // --- Anti-flash script ---

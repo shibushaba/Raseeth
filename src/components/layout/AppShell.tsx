@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import {
   useCallback,
   useEffect,
@@ -6,32 +5,37 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import { Settings } from 'lucide-react'
 
-import { BottomNav } from '@/components/layout/BottomNav'
+import { SectionNav } from '@/components/layout/portal/SectionNav'
 import { Button } from '@/components/ui/button'
-import { getUnreadMessageCount } from '@/data/api'
-import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
   GlobalSearchDialog,
   GlobalSearchTrigger,
 } from '@/features/search/GlobalSearchDialog'
 import { SearchProvider } from '@/features/search/SearchContext'
-import { desktopNavItemsFor, homePathFor } from '@/lib/roles'
+import { homePathFor } from '@/lib/roles'
 import { cn } from '@/lib/utils'
+
+function isPortalRoute(pathname: string): boolean {
+  return (
+    pathname === '/overview' ||
+    pathname === '/manage' ||
+    pathname === '/sales' ||
+    pathname.startsWith('/sales/') ||
+    pathname === '/inventory' ||
+    pathname.startsWith('/inventory/') ||
+    pathname === '/home'
+  )
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { profile, role, signOut } = useAuth()
+  const location = useLocation()
   const [searchOpen, setSearchOpen] = useState(false)
   const searchTriggerRef = useRef<HTMLButtonElement>(null)
-
-  const unreadQuery = useQuery({
-    queryKey: queryKeys.messages.unreadCount,
-    queryFn: getUnreadMessageCount,
-    refetchInterval: 30_000,
-    enabled: Boolean(profile),
-  })
 
   const openSearch = useCallback(() => setSearchOpen(true), [])
   const closeSearch = useCallback(() => setSearchOpen(false), [])
@@ -59,102 +63,64 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (!role || !profile) return null
 
-  const items = desktopNavItemsFor(role)
-  const unread = unreadQuery.data ?? 0
-  const primary = items.filter((i) => i.primary)
-  const secondary = items.filter((i) => !i.primary)
+  const portalMode = isPortalRoute(location.pathname)
 
   return (
     <SearchProvider openSearch={openSearch}>
-      <div className="min-h-dvh bg-background text-foreground">
-      <header className="border-b border-border bg-surface/90 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
-          <Link
-            to={homePathFor(role)}
-            className="text-xl font-extrabold tracking-tight text-accent"
-          >
-            Raseeth
-          </Link>
-          <div className="flex shrink-0 items-center gap-2">
-            <GlobalSearchTrigger
-              onOpen={openSearch}
-              triggerRef={searchTriggerRef}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void signOut()}
-              className="hidden sm:inline-flex"
-            >
-              Sign out
-            </Button>
-          </div>
-        </div>
-
-        <nav
-          className="mx-auto hidden max-w-6xl px-4 pb-3 sm:block sm:px-6"
-          aria-label="Primary"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            {primary.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold transition-colors',
-                    isActive
-                      ? 'bg-accent text-white shadow-sm'
-                      : 'bg-accent-soft/60 text-foreground hover:bg-accent-soft dark:bg-stone-800 dark:hover:bg-stone-700',
-                  )
-                }
+      <div className="flex min-h-dvh flex-col bg-[#F5F3FF] text-foreground dark:bg-background">
+        {!portalMode ? (
+          <header className="border-b border-violet-100 bg-white/90 backdrop-blur-sm">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+              <Link
+                to={homePathFor(role)}
+                className="text-xl font-black tracking-tight text-violet-700"
               >
-                {item.label}
-              </NavLink>
-            ))}
-            <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden />
-            {secondary.map((item) => {
-              const isMessages = item.to === '/messages'
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'text-foreground underline decoration-accent decoration-2 underline-offset-4'
-                        : 'text-muted hover:text-foreground',
-                    )
-                  }
-                  aria-label={
-                    isMessages && unread > 0
-                      ? `${item.label}, ${unread} unread`
-                      : item.label
-                  }
+                Raseeth
+              </Link>
+              <div className="flex shrink-0 items-center gap-2">
+                <GlobalSearchTrigger
+                  onOpen={openSearch}
+                  triggerRef={searchTriggerRef}
+                />
+                <Link
+                  to="/settings"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-violet-50 hover:text-violet-700"
+                  aria-label="Settings"
                 >
-                  {isMessages && unread > 0
-                    ? `${item.label} (${unread})`
-                    : item.label}
-                </NavLink>
-              )
-            })}
-          </div>
-        </nav>
-      </header>
+                  <Settings className="h-4 w-4" />
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void signOut()}
+                  className="hidden sm:inline-flex"
+                >
+                  Sign out
+                </Button>
+              </div>
+            </div>
+          </header>
+        ) : null}
 
-      <main className="mx-auto max-w-6xl px-4 py-6 max-md:pb-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px)+1.5rem)] sm:px-6 sm:py-8">
-        {children}
-      </main>
+        {portalMode ? <SectionNav role={role} /> : null}
 
-      <BottomNav role={role} />
+        <main
+          className={cn(
+            'flex-1',
+            portalMode
+              ? 'mx-auto w-full max-w-lg'
+              : 'mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8',
+          )}
+        >
+          {children}
+        </main>
 
-      <GlobalSearchDialog
-        open={searchOpen}
-        onClose={closeSearch}
-        returnFocusRef={searchTriggerRef}
-      />
-    </div>
+        <GlobalSearchDialog
+          open={searchOpen}
+          onClose={closeSearch}
+          returnFocusRef={searchTriggerRef}
+        />
+      </div>
     </SearchProvider>
   )
 }

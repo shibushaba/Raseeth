@@ -93,6 +93,18 @@ export async function fetchProfile(userId: string): Promise<Profile> {
   return assertData(data, error)
 }
 
+/** Team members visible to authenticated staff (RLS: staff read all profiles). */
+export async function getTeamProfiles(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('role', { ascending: true })
+    .order('full_name', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
 /** All products, optionally filtered by name or product_code. */
 export async function getProducts(search?: string): Promise<Product[]> {
   let query = supabase

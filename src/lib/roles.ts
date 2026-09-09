@@ -88,5 +88,5 @@ export function navItemsFor(role: UserRole): NavItem[] {
 }
 
 export function homePathFor(role: UserRole): string {
-  return role === 'OWNER' ? '/overview' : '/home'
+  return role === 'OWNER' ? '/overview' : '/sales'
 }

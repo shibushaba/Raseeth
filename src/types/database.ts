@@ -19,6 +19,7 @@ export interface Database {
           id: string
           full_name: string
           role: UserRole
+          phone: string | null
           created_at: string
           updated_at: string
         }
@@ -26,6 +27,7 @@ export interface Database {
           id: string
           full_name: string
           role: UserRole
+          phone?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -33,6 +35,7 @@ export interface Database {
           id?: string
           full_name?: string
           role?: UserRole
+          phone?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -460,6 +463,12 @@ export interface Database {
     }
     Views: Record<string, never>
     Functions: {
+      get_email_for_phone_login: {
+        Args: {
+          p_phone: string
+        }
+        Returns: string | null
+      }
       create_product: {
         Args: {
           p_name: string

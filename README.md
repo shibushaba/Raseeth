@@ -164,10 +164,14 @@ Empty UI expectations:
 
 Local demo credentials used by validation scripts:
 
-| Email | Role | Password |
+Local demo credentials used by validation scripts (E2E still uses email internally; the app login screen uses mobile):
+
+| Mobile | Role | Password |
 | --- | --- | --- |
-| `owner@raseeth.demo` | OWNER | `DemoOwner123!` |
-| `salesman@raseeth.demo` | SALESMAN | `DemoSalesman123!` |
+| `9876500001` | OWNER | `DemoOwner123!` |
+| `9876500002` | SALESMAN | `DemoSalesman123!` |
+
+Legacy email accounts (same passwords): `owner@raseeth.demo`, `salesman@raseeth.demo`
 
 Optional demo catalog (development only):
 

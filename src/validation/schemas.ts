@@ -14,8 +14,15 @@ const positiveMoneySchema = z
     message: 'Payment amount must be greater than zero.',
   })
 
+import { isValidIndianMobile, normalizePhoneDigits } from '@/lib/phone'
+
 export const loginSchema = z.object({
-  email: z.string().email('Enter a valid email'),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Enter your mobile number')
+    .transform(normalizePhoneDigits)
+    .refine(isValidIndianMobile, 'Enter a valid 10-digit mobile number'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 

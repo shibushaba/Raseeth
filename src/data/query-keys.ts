@@ -48,4 +48,7 @@ export const queryKeys = {
     preview: (role: string, userId: string) =>
       ['activity', 'preview', role, userId] as const,
   },
+  team: {
+    profiles: ['team', 'profiles'] as const,
+  },
 }

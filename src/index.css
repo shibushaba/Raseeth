@@ -73,6 +73,14 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  * {
+    scrollbar-width: none;
+  }
+
   #root {
     @apply min-h-dvh;
   }

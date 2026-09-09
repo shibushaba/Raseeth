@@ -3,8 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { homePathFor } from '@/lib/roles'
 import { LoginPage } from '@/pages/LoginPage'
+import { OwnerManagePage } from '@/pages/owner/ManagePage'
 import { OwnerOverviewPage } from '@/pages/owner/OverviewPage'
-import { SalesmanHomePage } from '@/pages/salesman/HomePage'
 import { CreateProductPage } from '@/pages/shared/CreateProductPage'
 import { ActivityPage } from '@/pages/shared/ActivityPage'
 import { InventoryPage } from '@/pages/shared/InventoryPage'
@@ -49,13 +49,14 @@ export function AppRouter() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleRoute allow={['SALESMAN']} />}>
-            <Route path="/home" element={<SalesmanHomePage />} />
+            <Route path="/home" element={<Navigate to="/sales" replace />} />
             <Route path="/inventory/new" element={<CreateProductPage />} />
             <Route path="/sales/history" element={<SalesHistoryPage />} />
           </Route>
 
           <Route element={<RoleRoute allow={['OWNER']} />}>
             <Route path="/overview" element={<OwnerOverviewPage />} />
+            <Route path="/manage" element={<OwnerManagePage />} />
           </Route>
 
           <Route path="/sales" element={<SalesPage />} />

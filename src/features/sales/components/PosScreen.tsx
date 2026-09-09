@@ -1,22 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from 'react'
+import { ArrowLeft, Check, ShoppingCart, X } from 'lucide-react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { PageHero } from '@/components/layout/PageHero'
-import { AppIcon } from '@/components/ui/icon'
+import { PortalHeader } from '@/components/layout/portal/PortalHeader'
+import { PortalTabs } from '@/components/layout/portal/PortalTabs'
 import { useAuth } from '@/features/auth/AuthProvider'
-
-import { Button } from '@/components/ui/button'
-import { Card, CardBody } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { CheckmarkCircle02Icon, PrinterIcon } from '@/lib/icons'
 import { createSale, getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import {
@@ -24,7 +13,6 @@ import {
   unitPriceForType,
   type CartItem,
 } from '@/features/sales/cart'
-import { CartPanel } from '@/features/sales/components/CartPanel'
 import {
   PaymentPanel,
   buildPaymentsFromMode,
@@ -32,14 +20,31 @@ import {
   type PaymentMode,
   type SplitPaymentRow,
 } from '@/features/sales/components/PaymentPanel'
-import { PosProductResults } from '@/features/sales/components/PosProductResults'
+import { PosProductGrid } from '@/features/sales/components/PosProductGrid'
+import { PosRecentSales } from '@/features/sales/components/PosRecentSales'
 import { localDayBounds } from '@/lib/datetime'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
 import { formatMoney, lineTotal, sumCartTotal, toMoneyString } from '@/lib/money'
+import { uniqueCategories } from '@/lib/product-categories'
 import { printSaleReceipt } from '@/lib/print-sale-receipt'
 import { PAYMENT_METHOD_LABEL } from '@/lib/payment-labels'
-import type { PaymentMethod, PriceType, Product, Sale } from '@/types/database'
+import type { PaymentMethod, Product, Sale } from '@/types/database'
 import { createSaleSchema } from '@/validation/schemas'
+
+type PosScreen = 'browse' | 'cart' | 'payment' | 'receipt'
+type BrowseTab = 'products' | 'sales'
+
+type CompletedSale = Sale & {
+  payments: Array<{ method: PaymentMethod; amount: number }>
+  receiptItems: Array<{
+    name: string
+    product_code: string
+    quantity: number
+    unit_price: number
+    line_total: number
+  }>
+  sold_by_name?: string | null
+}
 
 async function invalidateAfterSale(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -58,57 +63,55 @@ async function invalidateAfterSale(
   ])
 }
 
-type CompletedSale = Sale & {
-  payments: Array<{ method: PaymentMethod; amount: number }>
-  receiptItems: Array<{
-    name: string
-    product_code: string
-    quantity: number
-    unit_price: number
-    line_total: number
-  }>
-  sold_by_name?: string | null
+function cartTotal(cart: CartItem[]) {
+  return sumCartTotal(
+    cart.map((item) => ({
+      unit_price: unitPriceForType(item),
+      quantity: item.quantity,
+    })),
+  )
 }
 
 export function PosScreen() {
   const queryClient = useQueryClient()
-  const { profile } = useAuth()
-  const searchRef = useRef<HTMLInputElement>(null)
-  const submittingRef = useRef(false)
+  const { profile, signOut } = useAuth()
+  const [screen, setScreen] = useState<PosScreen>('browse')
+  const [browseTab, setBrowseTab] = useState<BrowseTab>('products')
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState<string | null>(null)
   const deferredSearch = useDeferredValue(search.trim())
   const [cart, setCart] = useState<CartItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [completed, setCompleted] = useState<CompletedSale | null>(null)
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH')
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('UPI')
   const [splitRows, setSplitRows] = useState<SplitPaymentRow[]>([
     { id: '1', method: 'CASH', amount: '' },
     { id: '2', method: 'UPI', amount: '' },
   ])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (window.matchMedia('(min-width: 640px)').matches) {
-      searchRef.current?.focus()
-    }
-  }, [])
-
   const productsQuery = useQuery({
     queryKey: queryKeys.products.list(deferredSearch),
     queryFn: () => getProducts(deferredSearch),
-    enabled: deferredSearch.length > 0,
   })
 
-  const total = useMemo(
-    () =>
-      sumCartTotal(
-        cart.map((item) => ({
-          unit_price: unitPriceForType(item),
-          quantity: item.quantity,
-        })),
-      ),
-    [cart],
+  const allProducts = productsQuery.data ?? []
+  const categories = useMemo(
+    () => ['All', ...uniqueCategories(allProducts)],
+    [allProducts],
   )
+
+  const filteredProducts = useMemo(() => {
+    let list = allProducts
+    if (category && category !== 'All') {
+      list = list.filter(
+        (p) => p.category?.toLowerCase() === category.toLowerCase(),
+      )
+    }
+    return list
+  }, [allProducts, category])
+
+  const total = useMemo(() => cartTotal(cart), [cart])
+  const cartCount = cart.reduce((s, i) => s + i.quantity, 0)
 
   const cartInvalid = cart.some(
     (item) =>
@@ -144,24 +147,19 @@ export function PosScreen() {
       setCart([])
       setSearch('')
       setError(null)
-      setPaymentMode('CASH')
+      setPaymentMode('UPI')
       setSplitRows([
         { id: '1', method: 'CASH', amount: '' },
         { id: '2', method: 'UPI', amount: '' },
       ])
+      setScreen('receipt')
       await invalidateAfterSale(queryClient)
     },
     onError: (err) => {
       logTechnicalError('createSale', err)
       setError(
-        toUserMessage(
-          err,
-          'Unable to complete payment. Please try again.',
-        ),
+        toUserMessage(err, 'Unable to complete payment. Please try again.'),
       )
-    },
-    onSettled: () => {
-      submittingRef.current = false
     },
   })
 
@@ -192,69 +190,43 @@ export function PosScreen() {
             : i,
         )
       }
-
       if (product.current_quantity <= 0) {
         setError(`${product.name} is out of stock.`)
         return prev
       }
-
-      return [
-        ...prev,
-        {
-          ...productToCartSeed(product),
-          quantity: 1,
-        },
-      ]
+      return [...prev, { ...productToCartSeed(product), quantity: 1 }]
     })
   }
 
-  function addFromSearchKeyboard() {
-    const products = productsQuery.data ?? []
-    if (products.length === 0 || productsQuery.isFetching) return
-
-    const needle = deferredSearch.toLowerCase()
-    const exactCode = products.find(
-      (p) => p.product_code.toLowerCase() === needle,
-    )
-    const inStock =
-      exactCode ??
-      products.find((p) => p.current_quantity > 0) ??
-      products[0]
-
-    if (!inStock) return
-    addProduct(inStock)
-    setSearch('')
-  }
-
-  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Escape') {
-      setSearch('')
+  function updateQty(productId: string, qty: number) {
+    if (qty <= 0) {
+      setCart((prev) => prev.filter((i) => i.product_id !== productId))
       return
     }
-    if (e.key !== 'Enter') return
-    e.preventDefault()
-    addFromSearchKeyboard()
+    setCart((prev) =>
+      prev.map((i) => {
+        if (i.product_id !== productId) return i
+        const clamped = Math.min(i.available_stock, Math.max(1, qty))
+        return { ...i, quantity: clamped }
+      }),
+    )
   }
 
   function completeSale() {
-    if (submittingRef.current || mutation.isPending) return
     setError(null)
-
     for (const item of cart) {
       if (item.quantity > item.available_stock) {
         setError(
-          `Not enough ${item.name} in stock. Available: ${item.available_stock}. Requested: ${item.quantity}.`,
+          `Not enough ${item.name} in stock. Available: ${item.available_stock}.`,
         )
         return
       }
     }
-
     const status = paymentStatus(paymentMode, total, splitRows)
     if (!status.valid) {
       setError(status.message)
       return
     }
-
     const payload = {
       items: cart.map((item) => ({
         product_id: item.product_id,
@@ -269,29 +241,27 @@ export function PosScreen() {
         }),
       ),
     }
-
     const parsed = createSaleSchema.safeParse(payload)
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Payment is invalid.')
       return
     }
-
-    submittingRef.current = true
     mutation.mutate(parsed.data)
   }
 
-  if (completed) {
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'Cashier'
+
+  if (screen === 'receipt' && completed) {
     const paid = completed.payments.reduce((a, p) => a + p.amount, 0)
-    const receipt = completed
 
     function handlePrint() {
       const ok = printSaleReceipt({
-        sale_number: receipt.sale_number,
-        created_at: receipt.created_at,
-        total_amount: Number(receipt.total_amount),
-        items: receipt.receiptItems,
-        payments: receipt.payments,
-        sold_by: receipt.sold_by_name,
+        sale_number: completed!.sale_number,
+        created_at: completed!.created_at,
+        total_amount: Number(completed!.total_amount),
+        items: completed!.receiptItems,
+        payments: completed!.payments,
+        sold_by: completed!.sold_by_name,
       })
       if (!ok) {
         window.alert('Unable to open print window. Allow pop-ups and try again.')
@@ -299,257 +269,339 @@ export function PosScreen() {
     }
 
     return (
-      <Card className="mx-auto max-w-md overflow-hidden">
-        <div className="hero-emerald text-center">
-          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
-            <AppIcon icon={CheckmarkCircle02Icon} size={36} />
+      <div className="flex min-h-[calc(100dvh-3rem)] flex-col bg-emerald-50">
+        <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto p-6">
+          <div className="mt-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500">
+            <Check className="h-10 w-10 text-white" aria-hidden />
           </div>
-          <p className="text-sm font-semibold opacity-90">Sale complete</p>
-          <p className="mt-2 text-3xl font-extrabold tabular-nums">
-            {formatMoney(completed.total_amount)}
-          </p>
-        </div>
-        <CardBody className="space-y-5 py-6">
-          <p className="text-center font-mono text-sm font-bold text-muted">
-            {completed.sale_number}
-          </p>
+          <div className="text-center">
+            <h2 className="text-2xl font-black text-emerald-700">
+              Payment Successful!
+            </h2>
+            <p className="mt-1 text-sm font-medium text-gray-500">
+              {completed.sale_number}
+            </p>
+          </div>
 
-          <div className="rounded-2xl border border-border bg-accent-soft/30 p-4 dark:bg-stone-800/40">
-            <p className="eyebrow">Payment</p>
-            <ul className="mt-3 space-y-2 text-sm">
-              {completed.payments.map((p, i) => (
-                <li
-                  key={`${p.method}-${i}`}
-                  className="flex justify-between gap-4 font-medium"
+          <div className="w-full overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+            <div className="bg-violet-600 px-5 py-4 text-white">
+              <div className="text-xs font-semibold opacity-70">Receipt</div>
+              <div className="mt-0.5 text-xs opacity-60">
+                {new Date(completed.created_at).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <div className="space-y-4 p-4">
+              {completed.receiptItems.map((item) => (
+                <div
+                  key={item.product_code}
+                  className="border-b border-dashed border-gray-100 pb-3 last:border-0 last:pb-0"
                 >
-                  <span className="text-muted">
-                    {PAYMENT_METHOD_LABEL[p.method]}
-                  </span>
-                  <span className="font-bold tabular-nums">
-                    {formatMoney(p.amount)}
-                  </span>
-                </li>
+                  <div className="text-sm font-bold text-gray-800">
+                    {item.name}
+                  </div>
+                  <div className="mb-1 text-xs text-gray-400">
+                    Qty: {item.quantity} × {formatMoney(item.unit_price)}
+                  </div>
+                  <div className="flex justify-between text-sm font-extrabold text-gray-800">
+                    <span>Final</span>
+                    <span className="text-violet-700">
+                      {formatMoney(item.line_total)}
+                    </span>
+                  </div>
+                </div>
               ))}
-              <li className="flex justify-between gap-4 border-t border-border pt-2 font-bold">
-                <span>Paid</span>
-                <span className="tabular-nums">{formatMoney(paid)}</span>
-              </li>
-            </ul>
+              <div className="space-y-1 border-t-2 border-dashed border-gray-200 pt-3">
+                <div className="flex justify-between">
+                  <span className="font-extrabold text-gray-800">Total</span>
+                  <span className="text-lg font-black text-violet-700">
+                    {formatMoney(completed.total_amount)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>Payment</span>
+                  <span className="text-xs font-bold">
+                    {completed.payments
+                      .map((p) => PAYMENT_METHOD_LABEL[p.method])
+                      .join(', ')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>Paid</span>
+                  <span className="font-bold">{formatMoney(paid)}</span>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <div className="flex flex-col gap-2 pt-2">
-            <Button
-              type="button"
-              variant="accent"
-              size="lg"
-              className="w-full gap-2"
-              onClick={handlePrint}
-            >
-              <AppIcon icon={PrinterIcon} size="md" />
-              Print bill
-            </Button>
-            <Button
-              type="button"
-              variant="success"
-              size="lg"
-              className="w-full"
-              onClick={() => {
-                setCompleted(null)
-                setError(null)
-                mutation.reset()
-                queueMicrotask(() => searchRef.current?.focus())
-              }}
-            >
-              New sale
-            </Button>
-            <Link
-              to={`/sales/${completed.id}`}
-              className="inline-flex h-12 items-center justify-center rounded-2xl border-2 border-accent bg-surface px-4 text-sm font-bold text-accent hover:bg-accent-soft/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              View sale
-            </Link>
-          </div>
-        </CardBody>
-      </Card>
+        <div className="space-y-2 border-t border-emerald-100 bg-white p-4">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="w-full rounded-2xl border-2 border-violet-600 py-3.5 text-sm font-extrabold text-violet-600"
+          >
+            Print Receipt
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCompleted(null)
+              setScreen('browse')
+              mutation.reset()
+            }}
+            className="w-full rounded-2xl bg-violet-600 py-3.5 text-sm font-extrabold text-white active:bg-violet-700"
+          >
+            New Sale
+          </button>
+          <Link
+            to={`/sales/${completed.id}`}
+            className="block w-full rounded-2xl py-3 text-center text-sm font-bold text-violet-600"
+          >
+            View sale details
+          </Link>
+        </div>
+      </div>
     )
   }
 
-  const checkoutBlock =
-    cart.length > 0 ? (
-      <section className="space-y-5 border-t border-border pt-5 lg:border-t-0 lg:pt-0">
-        <div className="flex items-baseline justify-between gap-4 border-b border-dashed border-border pb-3">
-          <span className="section-label">Total</span>
-          <span className="text-xl tabular-nums font-semibold">
-            {formatMoney(total)}
-          </span>
+  if (screen === 'payment') {
+    return (
+      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+        <div className="flex items-center gap-3 border-b border-violet-100 bg-white px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setScreen('cart')}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-50 text-violet-700"
+            aria-label="Back to cart"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <h2 className="font-extrabold text-gray-800">Payment</h2>
         </div>
 
-        <PaymentPanel
-          saleTotal={total}
-          mode={paymentMode}
-          onModeChange={setPaymentMode}
-          splitRows={splitRows}
-          onSplitRowsChange={setSplitRows}
-          showValidation={false}
-        />
+        <div className="flex-1 overflow-y-auto p-4">
+          <PaymentPanel
+            saleTotal={total}
+            mode={paymentMode}
+            onModeChange={setPaymentMode}
+            splitRows={splitRows}
+            onSplitRowsChange={setSplitRows}
+          />
+          {error ? (
+            <p className="mt-3 text-sm text-red-600" role="alert">{error}</p>
+          ) : null}
+        </div>
 
-        {error ? (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        ) : payCheck.message && !payCheck.valid ? (
-          <p className="text-sm text-danger" role="alert">
-            {payCheck.message}
-          </p>
-        ) : cartInvalid ? (
-          <p className="text-sm text-danger" role="alert">
-            Fix cart quantities or custom prices before completing.
-          </p>
-        ) : null}
+        <div className="border-t border-violet-100 bg-white p-4">
+          <button
+            type="button"
+            disabled={!canComplete}
+            onClick={completeSale}
+            className="w-full rounded-2xl bg-emerald-500 py-4 text-base font-extrabold text-white shadow-md active:bg-emerald-600 disabled:opacity-40"
+          >
+            {mutation.isPending
+              ? 'Processing…'
+              : `Confirm Payment · ${formatMoney(total)}`}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
-        <Button
-          type="button"
-          variant="accent"
-          className="w-full"
-          size="lg"
-          disabled={!canComplete}
-          onClick={completeSale}
-        >
-          {mutation.isPending ? '…' : 'Complete sale'}
-        </Button>
-      </section>
-    ) : null
+  if (screen === 'cart') {
+    return (
+      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+        <div className="flex items-center gap-3 border-b border-violet-100 bg-white px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setScreen('browse')}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-50 text-violet-700"
+            aria-label="Back to products"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div>
+            <h2 className="font-extrabold text-gray-800">Cart</h2>
+            <p className="text-xs text-gray-400">
+              {cart.length} item{cart.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+
+        {cart.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-gray-400">
+            <ShoppingCart className="h-12 w-12" aria-hidden />
+            <p className="font-semibold">Cart is empty</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              {cart.map((item) => {
+                const unit = unitPriceForType(item)
+                const line = lineTotal(unit, item.quantity)
+                return (
+                  <div
+                    key={item.product_id}
+                    className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-bold text-gray-800">
+                          {item.name}
+                        </div>
+                        <div className="mt-0.5 text-sm font-extrabold text-violet-600">
+                          {formatMoney(unit)} / unit
+                        </div>
+                        <div className="mt-0.5 text-xs font-semibold text-red-400">
+                          {formatMoney(item.wholesale_price)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCart((prev) =>
+                            prev.filter((i) => i.product_id !== item.product_id),
+                          )
+                        }
+                        className="text-red-400"
+                        aria-label={`Remove ${item.name}`}
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <div className="mt-3 flex items-center">
+                      <div className="flex items-center rounded-xl bg-violet-50">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateQty(item.product_id, item.quantity - 1)
+                          }
+                          className="flex h-9 w-9 items-center justify-center text-lg font-extrabold text-violet-700"
+                        >
+                          −
+                        </button>
+                        <span className="w-8 text-center font-extrabold text-gray-800">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateQty(item.product_id, item.quantity + 1)
+                          }
+                          className="flex h-9 w-9 items-center justify-center text-lg font-extrabold text-violet-700"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div className="ml-auto text-sm font-extrabold text-violet-700">
+                        {formatMoney(line)}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="space-y-2 border-t border-violet-100 bg-white p-4">
+              <div className="flex justify-between border-t border-violet-50 pt-2">
+                <span className="font-extrabold text-gray-800">Total</span>
+                <span className="text-lg font-black text-violet-700">
+                  {formatMoney(total)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScreen('payment')}
+                className="w-full rounded-2xl bg-violet-600 py-4 text-base font-extrabold text-white shadow-md active:bg-violet-700"
+              >
+                Proceed to Payment · {formatMoney(total)}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6 pb-24 lg:space-y-0 lg:pb-0">
-      <PageHero title="New sale" tone="violet" />
+    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+      <PortalHeader
+        tone="violet"
+        subtitle="Cashier"
+        title={`Hi, ${firstName}`}
+        onLogout={() => void signOut()}
+        search={search}
+        onSearchChange={setSearch}
+      />
 
-      <div className="flex justify-end">
-        <Link
-          to="/sales/history"
-          className="text-sm font-bold text-accent underline-offset-2 hover:underline"
-        >
-          History
-        </Link>
-      </div>
+      <PortalTabs
+        tone="violet"
+        size="md"
+        tabs={[
+          { id: 'products', label: 'Products' },
+          { id: 'sales', label: 'Recent Sales' },
+        ]}
+        activeId={browseTab}
+        onChange={(id) => setBrowseTab(id as BrowseTab)}
+      />
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-6">
-        <div className="space-y-5">
-          <Input
-            ref={searchRef}
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={onSearchKeyDown}
-            placeholder="Search products…"
-            aria-label="Search products"
-          />
+      {browseTab === 'products' ? (
+        <>
+          {categories.length > 1 ? (
+            <div className="flex gap-2 overflow-x-auto border-b border-violet-50 bg-white px-4 py-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() =>
+                    setCategory(cat === 'All' ? null : cat)
+                  }
+                  className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                    (cat === 'All' && !category) || category === cat
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-violet-50 text-violet-700'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-          {error && cart.length === 0 ? (
-            <p className="text-sm text-danger" role="alert">
+          {error ? (
+            <p className="px-4 pt-3 text-sm text-red-600" role="alert">
               {error}
             </p>
           ) : null}
 
-          <section aria-live="polite">
-            <PosProductResults
-              products={productsQuery.data ?? []}
-              isLoading={productsQuery.isFetching}
-              search={deferredSearch}
+          <div className="flex-1 overflow-y-auto">
+            <PosProductGrid
+              products={filteredProducts}
+              isLoading={productsQuery.isLoading}
               onAdd={addProduct}
             />
-          </section>
-
-          <Card>
-            <CardBody className="py-4">
-              <h2 className="section-label mb-3">Cart</h2>
-              <CartPanel
-                items={cart}
-                onQuantityChange={(productId, quantity) => {
-                  setCart((prev) =>
-                    prev.map((i) => {
-                      if (i.product_id !== productId) return i
-                      const clamped = Math.min(
-                        i.available_stock,
-                        Math.max(1, Math.floor(quantity)),
-                      )
-                      return { ...i, quantity: clamped }
-                    }),
-                  )
-                }}
-                onPriceTypeChange={(productId, priceType: PriceType) => {
-                  setCart((prev) =>
-                    prev.map((i) => {
-                      if (i.product_id !== productId) return i
-                      const next: CartItem = { ...i, price_type: priceType }
-                      if (priceType === 'RETAIL') next.unit_price = i.retail_price
-                      if (priceType === 'WHOLESALE')
-                        next.unit_price = i.wholesale_price
-                      return next
-                    }),
-                  )
-                }}
-                onCustomPriceChange={(productId, unitPrice) => {
-                  setCart((prev) =>
-                    prev.map((i) =>
-                      i.product_id === productId
-                        ? { ...i, unit_price: unitPrice, price_type: 'CUSTOM' }
-                        : i,
-                    ),
-                  )
-                }}
-                onRemove={(productId) => {
-                  setCart((prev) =>
-                    prev.filter((i) => i.product_id !== productId),
-                  )
-                }}
-              />
-            </CardBody>
-          </Card>
-        </div>
-
-        <aside className="mt-6 lg:sticky lg:top-4 lg:mt-0">
-          <Card>
-            <CardBody className="py-4">
-              {cart.length > 0 ? (
-                checkoutBlock
-              ) : (
-                <p className="text-center text-sm font-medium text-muted">
-                  Add products to check out
-                </p>
-              )}
-            </CardBody>
-          </Card>
-        </aside>
-      </div>
-
-      {cart.length > 0 ? (
-        <div
-          className="fixed inset-x-0 z-20 border-t border-border bg-surface/95 p-3 backdrop-blur-sm lg:hidden"
-          style={{
-            bottom:
-              'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px))',
-            paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
-          }}
-        >
-          <div className="mx-auto flex max-w-5xl items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="eyebrow">Total</p>
-              <p className="truncate text-lg font-semibold tabular-nums">
-                {formatMoney(total)}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="accent"
-              size="lg"
-              className="min-h-11 shrink-0"
-              disabled={!canComplete}
-              onClick={completeSale}
-            >
-              {mutation.isPending ? '…' : 'Complete sale'}
-            </Button>
           </div>
+        </>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          <PosRecentSales />
+        </div>
+      )}
+
+      {cartCount > 0 ? (
+        <div className="border-t border-violet-100 bg-white p-3">
+          <button
+            type="button"
+            onClick={() => setScreen('cart')}
+            className="flex w-full items-center justify-between rounded-2xl bg-violet-600 px-5 py-3.5 font-extrabold text-white active:bg-violet-700"
+          >
+            <span className="rounded-lg bg-white/20 px-2 py-0.5 text-sm">
+              {cartCount}
+            </span>
+            <span>View Cart</span>
+            <span className="font-black">{formatMoney(total)}</span>
+          </button>
         </div>
       ) : null}
     </div>

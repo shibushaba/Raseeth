@@ -1,22 +1,20 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
-import { PageHeader } from '@/components/layout/PageHeader'
+import { PortalBackBar } from '@/components/ui/portal-field'
 import { CreateProductForm } from '@/features/inventory/components/CreateProductForm'
 
 export function CreateProductPage() {
+  const navigate = useNavigate()
+
   return (
-    <div>
-      <Link
-        to="/inventory"
-        className="mb-6 inline-block text-sm text-neutral-600 hover:text-black"
-      >
-        ← Inventory
-      </Link>
-      <PageHeader
-        title="Add product"
-        description="Product ID is assigned automatically. Initial stock, if any, is recorded as a purchase."
+    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+      <PortalBackBar
+        title="Add New Product"
+        onBack={() => navigate('/inventory')}
       />
-      <CreateProductForm />
+      <div className="flex-1 overflow-y-auto">
+        <CreateProductForm />
+      </div>
     </div>
   )
 }

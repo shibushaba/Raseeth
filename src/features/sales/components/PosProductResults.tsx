@@ -1,5 +1,6 @@
 import { formatMoney } from '@/lib/money'
 import type { Product } from '@/types/database'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 function bestMatchId(products: Product[], search: string): string | null {
@@ -24,24 +25,24 @@ export function PosProductResults({
 }) {
   if (!search.trim()) {
     return (
-      <p className="text-center text-sm font-medium text-muted">
-        Search to add products
+      <p className="section-hint">
+        Search by product name or Product ID to add items.
       </p>
     )
   }
 
   if (isLoading) {
     return (
-      <p className="text-center text-sm font-medium text-muted" aria-busy="true">
-        Loading…
+      <p className="section-hint" aria-busy="true">
+        Loading products…
       </p>
     )
   }
 
   if (products.length === 0) {
     return (
-      <p className="text-center text-sm font-medium text-muted">
-        No products found
+      <p className="section-hint">
+        No products found. Try another name or Product ID.
       </p>
     )
   }
@@ -50,46 +51,49 @@ export function PosProductResults({
   const highlightId = bestMatchId(visible, search)
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {visible.map((product) => {
         const isOut = product.current_quantity <= 0
         const isBest = product.id === highlightId
         return (
-          <button
+          <div
             key={product.id}
-            type="button"
-            disabled={isOut}
-            onClick={() => !isOut && onAdd(product)}
             className={cn(
-              'card flex flex-col p-4 text-left transition-transform active:scale-[0.98]',
+              'card flex flex-col p-4',
               isBest && 'ring-2 ring-accent/40',
-              isOut && 'opacity-50',
+              isOut && 'opacity-60',
             )}
           >
-            <p className="line-clamp-2 text-sm font-extrabold leading-tight text-foreground">
+            <p className="truncate text-sm font-extrabold text-foreground">
               {product.name}
             </p>
-            <p className="mt-1 text-xs font-semibold text-muted">
-              {product.current_quantity} in stock
+            <p className="mt-1 text-xs font-medium text-muted">
+              {product.current_quantity} available
             </p>
-            <p className="mt-2 text-base font-extrabold tabular-nums text-accent">
-              {formatMoney(product.retail_price)}
-            </p>
-            <p className="text-xs font-bold tabular-nums text-danger">
-              {formatMoney(product.wholesale_price)}
-            </p>
-            {!isOut ? (
-              <span className="mt-3 w-full rounded-xl bg-accent py-1.5 text-center text-xs font-bold text-white">
-                + Add
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <span className="text-base font-extrabold text-accent tabular-nums">
+                {formatMoney(product.retail_price)}
               </span>
-            ) : (
-              <span className="mt-3 text-center text-xs font-bold text-danger">
-                Out of stock
-              </span>
-            )}
-          </button>
+              <Button
+                type="button"
+                variant="accent"
+                size="sm"
+                className="shrink-0 px-4"
+                disabled={isOut}
+                aria-label={`Add ${product.name}`}
+                onClick={() => onAdd(product)}
+              >
+                {isOut ? 'Out' : 'Add'}
+              </Button>
+            </div>
+          </div>
         )
       })}
+      {products.length > 8 ? (
+        <p className="col-span-full section-hint">
+          Showing 8 of {products.length}. Refine search for more.
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -21,7 +21,7 @@ type AuthState = {
   role: UserRole | null
   permissions: Permissions
   loading: boolean
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (phone: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -82,8 +82,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadProfile])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const signIn = useCallback(async (phone: string, password: string) => {
+    const { data: email, error: lookupError } = await supabase.rpc(
+      'get_email_for_phone_login',
+      { p_phone: phone },
+    )
+
+    if (lookupError || !email) {
+      throw new Error('Invalid login credentials')
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
     if (error) throw error
   }, [])
 

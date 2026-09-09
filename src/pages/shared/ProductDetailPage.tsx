@@ -1,24 +1,68 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Package, Pencil } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
-import { getInventoryHistory, getProduct } from '@/data/api'
+import { PortalBackBar, PortalCard } from '@/components/ui/portal-field'
+import { addStock, adjustStock, getInventoryHistory, getProduct } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { AddStockForm } from '@/features/inventory/components/AddStockForm'
-import { AdjustStockForm } from '@/features/inventory/components/AdjustStockForm'
 import { MovementHistory } from '@/features/inventory/components/MovementHistory'
-import { StockQuantity } from '@/features/inventory/components/StockQuantity'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, parseMoney } from '@/lib/money'
+import { getStockLevel } from '@/lib/stock'
+import { addStockSchema, adjustStockSchema } from '@/validation/schemas'
 
-type Panel = 'none' | 'add' | 'adjust'
+type Screen = 'detail' | 'addStock' | 'adjustStock'
+
+function StatusPill({ level }: { level: ReturnType<typeof getStockLevel> }) {
+  if (level === 'ok') {
+    return (
+      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+        In Stock
+      </span>
+    )
+  }
+  if (level === 'low') {
+    return (
+      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+        Low Stock
+      </span>
+    )
+  }
+  return (
+    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">
+      Out of Stock
+    </span>
+  )
+}
+
+function StockBar({ stock }: { stock: number }) {
+  const max = Math.max(20, stock * 2)
+  const pct = Math.min(100, (stock / max) * 100)
+  const level = getStockLevel(stock)
+  const color =
+    level === 'out'
+      ? 'bg-red-400'
+      : level === 'low'
+        ? 'bg-amber-400'
+        : 'bg-emerald-500'
+  return (
+    <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100">
+      <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    </div>
+  )
+}
 
 export function ProductDetailPage() {
   const { productId = '' } = useParams()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { permissions } = useAuth()
-  const [panel, setPanel] = useState<Panel>('none')
+  const [screen, setScreen] = useState<Screen>('detail')
+  const [addQty, setAddQty] = useState(0)
+  const [adjustQty, setAdjustQty] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const productQuery = useQuery({
     queryKey: queryKeys.products.detail(productId),
@@ -32,171 +76,348 @@ export function ProductDetailPage() {
     enabled: Boolean(productId),
   })
 
+  const addMutation = useMutation({
+    mutationFn: addStock,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.products.all }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.products.detail(productId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.inventoryHistory.byProduct(productId),
+        }),
+      ])
+      setScreen('detail')
+      setAddQty(0)
+      setError(null)
+    },
+    onError: (err) => {
+      logTechnicalError('addStock', err)
+      setError(toUserMessage(err, 'Unable to add stock.'))
+    },
+  })
+
+  const adjustMutation = useMutation({
+    mutationFn: adjustStock,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.products.all }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.products.detail(productId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.inventoryHistory.byProduct(productId),
+        }),
+      ])
+      setScreen('detail')
+      setAdjustQty('')
+      setError(null)
+    },
+    onError: (err) => {
+      logTechnicalError('adjustStock', err)
+      setError(toUserMessage(err, 'Unable to adjust stock.'))
+    },
+  })
+
   if (productQuery.isLoading) {
     return (
-      <div className="space-y-4" aria-busy="true">
-        <div className="h-4 w-24 animate-pulse bg-neutral-100" />
-        <div className="h-10 w-64 animate-pulse bg-neutral-100" />
-        <div className="h-8 w-32 animate-pulse bg-neutral-100" />
+      <div className="space-y-4 p-4" aria-busy="true">
+        <div className="h-32 animate-pulse rounded-2xl bg-emerald-50" />
+        <div className="h-24 animate-pulse rounded-2xl bg-emerald-50" />
       </div>
     )
   }
 
   if (productQuery.error || !productQuery.data) {
-    if (productQuery.error) {
-      logTechnicalError('getProduct', productQuery.error)
-    }
     return (
-      <div>
-        <Link
-          to="/inventory"
-          className="mb-6 inline-block text-sm text-neutral-600 hover:text-black"
-        >
-          ← Inventory
-        </Link>
-        <p className="text-sm text-red-700" role="alert">
-          {toUserMessage(
-            productQuery.error,
-            'That product could not be found.',
-          )}
+      <div className="p-4">
+        <PortalBackBar title="Product" onBack={() => navigate('/inventory')} />
+        <p className="mt-4 text-sm text-red-600" role="alert">
+          {toUserMessage(productQuery.error, 'That product could not be found.')}
         </p>
       </div>
     )
   }
 
   const product = productQuery.data
+  const level = getStockLevel(product.current_quantity)
+  const retail = parseMoney(product.retail_price)
+  const wholesale = parseMoney(product.wholesale_price)
+  const profit = retail - wholesale
+  const marginPct = retail > 0 ? Math.round((profit / retail) * 100) : 0
   const canOperate =
     permissions.canAddInventory || permissions.canAdjustInventory
 
+  if (screen === 'addStock' && permissions.canAddInventory) {
+    const newStock = product.current_quantity + addQty
+    return (
+      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+        <PortalBackBar title="Add Stock" onBack={() => setScreen('detail')} />
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          <PortalCard>
+            <div className="flex items-center gap-3 p-4">
+              <Package className="h-8 w-8 text-emerald-600" aria-hidden />
+              <div>
+                <div className="text-sm font-extrabold text-gray-800">{product.name}</div>
+                <div className="text-xs text-gray-400">{product.product_code}</div>
+              </div>
+            </div>
+          </PortalCard>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-gray-500">Current</div>
+                <div className="text-3xl font-black text-gray-800">
+                  {product.current_quantity}
+                </div>
+              </div>
+              <div className="text-2xl text-gray-400">→</div>
+              <div className="text-right">
+                <div className="text-xs font-semibold text-emerald-600">New</div>
+                <div className="text-3xl font-black text-emerald-600">{newStock}</div>
+              </div>
+            </div>
+          </div>
+
+          <PortalCard title="Quantity to Add">
+            <div className="flex items-center justify-between p-4">
+              <button
+                type="button"
+                onClick={() => setAddQty((q) => Math.max(0, q - 1))}
+                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-2xl font-extrabold text-gray-700"
+              >
+                −
+              </button>
+              <div className="text-center">
+                <div className="text-5xl font-black text-gray-800">{addQty}</div>
+                <div className="text-xs text-gray-400">units</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddQty((q) => q + 1)}
+                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-2xl font-extrabold text-white"
+              >
+                +
+              </button>
+            </div>
+          </PortalCard>
+
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        </div>
+
+        <div className="border-t border-violet-100 bg-white p-4">
+          <button
+            type="button"
+            disabled={addQty === 0 || addMutation.isPending}
+            onClick={() => {
+              const parsed = addStockSchema.safeParse({
+                product_id: product.id,
+                quantity: addQty,
+                unit_cost: product.purchase_price,
+              })
+              if (!parsed.success) {
+                setError(parsed.error.issues[0]?.message ?? 'Invalid quantity')
+                return
+              }
+              addMutation.mutate(parsed.data)
+            }}
+            className="w-full rounded-2xl bg-emerald-600 py-4 font-extrabold text-white disabled:opacity-40"
+          >
+            {addMutation.isPending ? 'Saving…' : `Confirm — Add ${addQty} units`}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === 'adjustStock' && permissions.canAdjustInventory) {
+    const target = adjustQty === '' ? null : Number(adjustQty)
+    const delta =
+      target !== null && !Number.isNaN(target)
+        ? target - product.current_quantity
+        : null
+
+    return (
+      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+        <PortalBackBar title="Fix Stock" onBack={() => setScreen('detail')} />
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          <PortalCard>
+            <div className="p-4">
+              <div className="text-sm font-extrabold text-gray-800">{product.name}</div>
+              <div className="mt-1 text-xs text-gray-400">
+                Current: {product.current_quantity} units
+              </div>
+            </div>
+          </PortalCard>
+          <PortalCard title="Correct stock count">
+            <div className="p-4">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={adjustQty}
+                onChange={(e) => setAdjustQty(e.target.value)}
+                placeholder="Enter correct quantity"
+                className="w-full rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+              />
+              {delta !== null && delta !== 0 ? (
+                <p className="mt-2 text-xs font-semibold text-gray-500">
+                  Adjustment: {delta > 0 ? '+' : ''}
+                  {delta} units
+                </p>
+              ) : null}
+            </div>
+          </PortalCard>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        </div>
+        <div className="border-t border-violet-100 bg-white p-4">
+          <button
+            type="button"
+            disabled={delta === null || delta === 0 || adjustMutation.isPending}
+            onClick={() => {
+              const parsed = adjustStockSchema.safeParse({
+                product_id: product.id,
+                quantity: delta,
+                reason: 'Stock count correction',
+              })
+              if (!parsed.success) {
+                setError(parsed.error.issues[0]?.message ?? 'Invalid quantity')
+                return
+              }
+              adjustMutation.mutate(parsed.data)
+            }}
+            className="w-full rounded-2xl bg-emerald-600 py-4 font-extrabold text-white disabled:opacity-40"
+          >
+            {adjustMutation.isPending ? 'Saving…' : 'Update Stock'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div>
-      <Link
-        to="/inventory"
-        className="mb-6 inline-block text-sm text-neutral-600 hover:text-black"
-      >
-        ← Inventory
-      </Link>
+    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+      <PortalBackBar
+        title="Product Details"
+        subtitle={product.product_code}
+        onBack={() => navigate('/inventory')}
+      />
 
-      <header className="max-w-2xl">
-        <h1 className="page-title">{product.name}</h1>
-        {product.category ? (
-          <p className="mt-1 text-sm text-muted">{product.category}</p>
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        <PortalCard>
+          <div className="flex items-start gap-4 p-5">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
+              <Package className="h-7 w-7 text-emerald-600" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              {product.category ? (
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  {product.category}
+                </div>
+              ) : null}
+              <div className="text-lg font-black text-gray-800">{product.name}</div>
+              <div className="mt-0.5 text-xs text-gray-400">{product.product_code}</div>
+            </div>
+            <StatusPill level={level} />
+          </div>
+        </PortalCard>
+
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold text-gray-500">Current Stock</div>
+              <div className="text-4xl font-black text-emerald-700">
+                {product.current_quantity}
+                <span className="ml-1 text-sm font-semibold text-gray-400">units</span>
+              </div>
+            </div>
+          </div>
+          <StockBar stock={product.current_quantity} />
+        </div>
+
+        <PortalCard title="Pricing">
+          <div className="grid grid-cols-2 divide-x divide-violet-50">
+            <div className="p-4">
+              <div className="mb-1 text-xs font-semibold uppercase text-gray-400">
+                Wholesale
+              </div>
+              <div className="text-xl font-black text-red-500">
+                {formatMoney(product.wholesale_price)}
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="mb-1 text-xs font-semibold uppercase text-violet-500">
+                Retail
+              </div>
+              <div className="text-xl font-black text-violet-700">
+                {formatMoney(product.retail_price)}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between border-t border-violet-50 bg-emerald-50 p-4">
+            <div>
+              <div className="text-xs font-semibold text-gray-500">Profit per unit</div>
+              <div className="text-lg font-black text-emerald-700">
+                +{formatMoney(profit)}
+              </div>
+            </div>
+            <div className="rounded-xl bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-emerald-700">
+              {marginPct}% margin
+            </div>
+          </div>
+        </PortalCard>
+
+        {product.description ? (
+          <PortalCard title="Description">
+            <p className="p-4 text-sm text-gray-600">{product.description}</p>
+          </PortalCard>
         ) : null}
-      </header>
 
-      <div className="mt-6">
-        <StockQuantity quantity={product.current_quantity} size="lg" />
-        <p className="mt-1 text-sm text-muted">in stock</p>
+        <PortalCard title="Stock History">
+          <div className="p-4">
+            <MovementHistory
+              movements={historyQuery.data}
+              isLoading={historyQuery.isLoading}
+              errorMessage={
+                historyQuery.error
+                  ? toUserMessage(
+                      historyQuery.error,
+                      'Unable to load inventory history.',
+                    )
+                  : null
+              }
+            />
+          </div>
+        </PortalCard>
       </div>
 
       {canOperate ? (
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <div className="space-y-2 border-t border-violet-100 bg-white p-4">
           {permissions.canAddInventory ? (
-            <Button
+            <button
               type="button"
-              className="min-h-11"
-              onClick={() => setPanel(panel === 'add' ? 'none' : 'add')}
-              variant={panel === 'add' ? 'primary' : 'secondary'}
+              onClick={() => setScreen('addStock')}
+              className="w-full rounded-2xl bg-emerald-600 py-3.5 font-extrabold text-white active:bg-emerald-700"
             >
-              Add stock
-            </Button>
+              + Add Stock
+            </button>
           ) : null}
-          {permissions.canAdjustInventory ? (
-            <Button
-              type="button"
-              className="min-h-11"
-              onClick={() => setPanel(panel === 'adjust' ? 'none' : 'adjust')}
-              variant={panel === 'adjust' ? 'primary' : 'secondary'}
-            >
-              Fix stock
-            </Button>
-          ) : null}
+          <div className="grid grid-cols-2 gap-2">
+            {permissions.canAdjustInventory ? (
+              <button
+                type="button"
+                onClick={() => setScreen('adjustStock')}
+                className="flex items-center justify-center gap-1 rounded-2xl border-2 border-gray-200 py-3 text-sm font-bold text-gray-600"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                Fix Stock
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
-
-      {panel === 'add' && permissions.canAddInventory ? (
-        <div className="mt-6 max-w-lg">
-          <AddStockForm
-            product={product}
-            onCancel={() => setPanel('none')}
-            onDone={() => {
-              void productQuery.refetch()
-              void historyQuery.refetch()
-              setPanel('none')
-            }}
-          />
-        </div>
-      ) : null}
-
-      {panel === 'adjust' && permissions.canAdjustInventory ? (
-        <div className="mt-6 max-w-lg">
-          <AdjustStockForm
-            product={product}
-            onCancel={() => setPanel('none')}
-            onDone={() => {
-              void productQuery.refetch()
-              void historyQuery.refetch()
-              setPanel('none')
-            }}
-          />
-        </div>
-      ) : null}
-
-      <section className="mt-8 max-w-lg">
-        <h2 className="section-label mb-3">Prices</h2>
-        <dl className="space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-sm text-muted">Retail</dt>
-            <dd className="text-lg tabular-nums font-medium">
-              {formatMoney(product.retail_price)}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-sm text-muted">Wholesale</dt>
-            <dd className="text-lg tabular-nums font-medium">
-              {formatMoney(product.wholesale_price)}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="mt-8 max-w-lg">
-        <h2 className="section-label mb-3">Cost</h2>
-        <dl className="space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-sm text-muted">Latest purchase</dt>
-            <dd className="text-lg tabular-nums font-medium">
-              {formatMoney(product.purchase_price)}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-sm text-muted">Avg cost</dt>
-            <dd className="text-lg tabular-nums font-medium">
-              {formatMoney(product.avg_unit_cost)}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      {product.description ? (
-        <p className="mt-6 max-w-lg text-sm text-muted">{product.description}</p>
-      ) : null}
-
-      <section className={panel === 'none' ? 'mt-12' : 'mt-8'}>
-        <h2 className="section-label mb-4">Stock history</h2>
-        <MovementHistory
-          movements={historyQuery.data}
-          isLoading={historyQuery.isLoading}
-          errorMessage={
-            historyQuery.error
-              ? toUserMessage(
-                  historyQuery.error,
-                  'Unable to load inventory history.',
-                )
-              : null
-          }
-        />
-      </section>
     </div>
   )
 }

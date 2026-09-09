@@ -2,25 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { InsightCard } from '@/components/dashboard/InsightCard'
-import { StatTile } from '@/components/dashboard/MetricCard'
-import { PageHero } from '@/components/layout/PageHero'
-import { PeriodSwitcher } from '@/components/dashboard/PeriodSwitcher'
-import { SectionHeader } from '@/components/dashboard/SectionHeader'
-import { TrendChart } from '@/components/dashboard/TrendChart'
-import { Card, CardBody } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import { PortalHeader } from '@/components/layout/portal/PortalHeader'
 import {
-  getBusinessPulse,
   getBusinessSummary,
   getBusinessTrend,
   getInventorySummary,
-  getRecentActivity,
   getRecentSales,
-  getTopProducts,
 } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
-import { ActivityPreviewList } from '@/features/activity/components/ActivityFeed'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
   dashboardRangeBounds,
@@ -28,17 +17,88 @@ import {
   trendBucketLabel,
   type DashboardRangeKey,
 } from '@/lib/datetime'
-import { toUserMessage } from '@/lib/errors'
 import { formatMoney } from '@/lib/money'
 
-function formatMargin(margin: number | null): string {
-  if (margin === null) return '—'
-  return `${margin.toFixed(1)}%`
+type WeekBar = { label: string; sales: number; profit: number }
+
+function WeeklyChart({
+  data,
+  selected,
+  onSelect,
+}: {
+  data: WeekBar[]
+  selected: WeekBar | null
+  onSelect: (bar: WeekBar | null) => void
+}) {
+  const max = Math.max(...data.map((d) => d.sales), 1)
+
+  return (
+    <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
+      <div className="font-extrabold text-sm text-gray-700">This week</div>
+      <div className="mt-3 flex items-end gap-1.5" style={{ height: '88px' }}>
+        {data.map((d) => {
+          const pct = (d.sales / max) * 100
+          const isSel = selected?.label === d.label
+          return (
+            <button
+              key={d.label}
+              type="button"
+              onClick={() => onSelect(isSel ? null : d)}
+              className="flex h-full flex-1 flex-col items-center gap-1"
+            >
+              <div className="flex w-full flex-1 items-end justify-center">
+                {d.sales > 0 ? (
+                  <div
+                    className={`w-full rounded-t-lg transition-all ${isSel ? 'bg-indigo-600' : 'bg-violet-200'}`}
+                    style={{ height: `${Math.max(pct, 8)}%` }}
+                  />
+                ) : (
+                  <div className="h-1 w-full rounded-sm bg-gray-100" />
+                )}
+              </div>
+              <span
+                className={`text-[10px] font-bold ${isSel ? 'text-indigo-700' : 'text-gray-400'}`}
+              >
+                {d.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {selected ? (
+        <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+          <div className="mb-3 text-sm font-bold text-indigo-700">
+            {selected.label}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-indigo-100 bg-white p-3 text-center">
+              <div className="mb-1 text-xs font-semibold text-gray-500">
+                Sales
+              </div>
+              <div className="text-lg font-black text-indigo-700">
+                {formatMoney(selected.sales)}
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-white p-3 text-center">
+              <div className="mb-1 text-xs font-semibold text-gray-500">
+                Profit
+              </div>
+              <div className="text-lg font-black text-emerald-600">
+                {formatMoney(selected.profit)}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 export function OwnerOverviewPage() {
-  const { user, role } = useAuth()
-  const [range, setRange] = useState<DashboardRangeKey>('today')
+  const { profile, signOut } = useAuth()
+  const [range] = useState<DashboardRangeKey>('today')
+  const [selectedBar, setSelectedBar] = useState<WeekBar | null>(null)
   const bounds = useMemo(() => dashboardRangeBounds(range), [range])
 
   const summaryQuery = useQuery({
@@ -47,18 +107,11 @@ export function OwnerOverviewPage() {
   })
 
   const trendQuery = useQuery({
-    queryKey: queryKeys.business.trend(bounds.rangeKey),
-    queryFn: () => getBusinessTrend(bounds.start, bounds.end),
-  })
-
-  const pulseQuery = useQuery({
-    queryKey: queryKeys.business.pulse(bounds.rangeKey),
-    queryFn: () => getBusinessPulse(bounds.start, bounds.end),
-  })
-
-  const topQuery = useQuery({
-    queryKey: queryKeys.business.topProducts(bounds.rangeKey, 5),
-    queryFn: () => getTopProducts(bounds.start, bounds.end, 5),
+    queryKey: queryKeys.business.trend('7d'),
+    queryFn: () => {
+      const weekBounds = dashboardRangeBounds('7d')
+      return getBusinessTrend(weekBounds.start, weekBounds.end)
+    },
   })
 
   const inventoryQuery = useQuery({
@@ -71,284 +124,136 @@ export function OwnerOverviewPage() {
     queryFn: () => getRecentSales(5),
   })
 
-  const activityQuery = useQuery({
-    queryKey: queryKeys.activity.preview(role ?? 'OWNER', user?.id ?? ''),
-    queryFn: () =>
-      getRecentActivity({
-        userId: user!.id,
-        role: role!,
-        limit: 5,
-      }),
-    enabled: Boolean(user?.id && role),
-  })
-
   const summary = summaryQuery.data
-  const trendData = useMemo(
-    () =>
-      (trendQuery.data ?? []).map((p) => ({
-        label: trendBucketLabel(p.periodStart, range),
-        sales: p.netSales,
-        profit: p.grossProfit,
-      })),
-    [trendQuery.data, range],
-  )
-
-  const insights = pulseQuery.data?.signals.slice(0, 3) ?? []
   const inv = inventoryQuery.data
-  const inStock = inv
-    ? Math.max(0, inv.total_products - inv.out_of_stock - inv.low_stock)
-    : 0
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'Owner'
+
+  const weekBars: WeekBar[] = useMemo(() => {
+    const points = trendQuery.data ?? []
+    return points.map((p) => ({
+      label: trendBucketLabel(p.periodStart, '7d'),
+      sales: p.netSales,
+      profit: p.grossProfit ?? 0,
+    }))
+  }, [trendQuery.data])
+
+  const weekTotal = weekBars.reduce((s, d) => s + d.sales, 0)
+  const weekProfit = weekBars.reduce((s, d) => s + d.profit, 0)
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 lg:max-w-none">
-      <PageHero
-        title={
-          summary?.hasSales ? formatMoney(summary.netSales) : '₹0'
-        }
-        subtitle="Sales"
-        tone="owner"
-      >
-        <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold">
-          <span>
-            <span className="opacity-70">Profit </span>
-            {summary?.grossProfit != null ? formatMoney(summary.grossProfit) : '—'}
-          </span>
-          <span>
-            <span className="opacity-70">Margin </span>
-            {formatMargin(summary?.grossMargin ?? null)}
-          </span>
-        </div>
-      </PageHero>
-
-      <PeriodSwitcher value={range} onChange={setRange} />
-
-      <div className="grid grid-cols-2 gap-3">
-        <StatTile
-          label="Products"
-          value={inv?.total_products ?? 0}
-          colorClass="bg-accent"
-        />
-        <StatTile
-          label="Need attention"
-          value={(inv?.low_stock ?? 0) + (inv?.out_of_stock ?? 0)}
-          colorClass="bg-danger"
-        />
-      </div>
-
-      {!summaryQuery.isLoading && summary && !summary.hasSales ? (
-        <Card>
-          <CardBody className="py-8 text-center">
-            <p className="text-base font-bold text-foreground">No sales yet</p>
-          </CardBody>
-        </Card>
-      ) : null}
-
-      <TrendChart
-        title="Sales"
-        data={trendData}
-        loading={trendQuery.isLoading}
-        showProfit={false}
+    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+      <PortalHeader
+        tone="indigo"
+        subtitle="Owner"
+        title={`Hi, ${firstName}`}
+        onLogout={() => void signOut()}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section>
-          <SectionHeader title="Insights" />
-          {pulseQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        <div className="rounded-2xl bg-indigo-700 p-5 text-white">
+          <div className="text-sm font-semibold opacity-70">Today&apos;s Profit</div>
+          <div className="mt-1 text-4xl font-black">
+            {summary?.hasSales
+              ? formatMoney(summary.grossProfit)
+              : formatMoney(0)}
+          </div>
+          <div className="mt-3 flex gap-4 text-sm">
+            <div>
+              <span className="opacity-70">Sales </span>
+              <span className="font-extrabold">
+                {summary?.hasSales ? formatMoney(summary.netSales) : '₹0'}
+              </span>
             </div>
-          ) : pulseQuery.error ? (
-            <p className="text-sm text-muted" role="status">
-              Insights are unavailable right now.
-            </p>
-          ) : insights.length === 0 ? (
-            <Card>
-              <CardBody className="py-6">
-                <p className="text-sm text-muted">
-                  Everything looks good. Nothing needs your attention.
-                </p>
-              </CardBody>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {insights.map((signal) => (
-                <InsightCard
-                  key={signal.id}
-                  type={signal.type}
-                  title={signal.title.replace(/_/g, ' ')}
-                  description={signal.description}
-                  href={signal.href}
-                  compact
-                />
-              ))}
+            <div>
+              <span className="opacity-70">Orders </span>
+              <span className="font-extrabold">{summary?.unitsSold ?? 0}</span>
             </div>
-          )}
-        </section>
+          </div>
+          <div className="mt-3 rounded-xl bg-white/10 px-4 py-2 text-sm">
+            <span className="opacity-70">This month </span>
+            <span className="font-extrabold">
+              {summary?.hasSales ? formatMoney(summary.grossProfit) : '₹0'}
+            </span>
+          </div>
+        </div>
 
-        <section>
-          <SectionHeader
-            title="Inventory"
-            actionLabel="Inventory"
-            actionTo="/inventory"
-          />
-          {inventoryQuery.isLoading ? (
-            <Skeleton className="h-40 w-full" />
-          ) : inventoryQuery.error ? (
-            <p className="text-sm text-danger">
-              {toUserMessage(
-                inventoryQuery.error,
-                'Unable to load inventory summary.',
-              )}
-            </p>
-          ) : inv?.total_products === 0 ? (
-            <Card>
-              <CardBody className="py-6">
-                <p className="text-sm font-medium text-foreground">
-                  No products yet.
-                </p>
-              </CardBody>
-            </Card>
-          ) : (
-            <Card>
-              <CardBody className="space-y-4 py-5">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-muted">Total products</span>
-                  <span className="text-lg font-semibold tabular-nums">
-                    {inv?.total_products ?? 0}
-                  </span>
-                </div>
-                <div className="space-y-3 border-t border-border pt-4">
-                  <StatRow label="In stock" value={inStock} tone="success" />
-                  <StatRow label="Low stock" value={inv?.low_stock ?? 0} tone="warning" />
-                  <StatRow label="Out of stock" value={inv?.out_of_stock ?? 0} tone="danger" />
-                </div>
-              </CardBody>
-            </Card>
-          )}
-        </section>
-      </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            to="/inventory"
+            className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm"
+          >
+            <div className="text-2xl font-black text-violet-700">
+              {inv?.total_products ?? 0}
+            </div>
+            <div className="mt-0.5 text-xs font-bold text-gray-500">
+              Products
+            </div>
+          </Link>
+          <Link
+            to="/inventory"
+            className="rounded-2xl border border-red-100 bg-white p-4 shadow-sm"
+          >
+            <div className="text-2xl font-black text-red-500">
+              {(inv?.low_stock ?? 0) + (inv?.out_of_stock ?? 0)}
+            </div>
+            <div className="mt-0.5 text-xs font-bold text-gray-500">
+              Alerts
+            </div>
+          </Link>
+        </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section>
-          <SectionHeader title="Top products" />
-          {topQuery.isLoading ? (
-            <Skeleton className="h-48 w-full" />
-          ) : topQuery.error ? (
-            <p className="text-sm text-muted">
-              {toUserMessage(topQuery.error, 'Unable to load top products.')}
-            </p>
-          ) : (topQuery.data ?? []).length === 0 ? (
-            <Card>
-              <CardBody className="py-6 text-sm text-muted">
-                Top products appear once you have sales with tracked costs.
-              </CardBody>
-            </Card>
-          ) : (
-            <Card>
-              <ul className="divide-y divide-border">
-                {(topQuery.data ?? []).map((p) => (
-                  <li key={p.productId}>
-                    <Link
-                      to={`/inventory/${p.productId}`}
-                      className="row-hover flex items-center justify-between gap-4 px-5 py-4"
-                    >
-                      <span className="min-w-0 truncate font-medium">
-                        {p.productName}
-                      </span>
-                      <span className="shrink-0 tabular-nums text-muted">
-                        {formatMoney(p.grossProfit)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-        </section>
-
-        <section>
-          <SectionHeader
-            title="Recent sales"
-            actionLabel="View sales"
-            actionTo="/sales"
-          />
-          {recentSalesQuery.isLoading ? (
-            <Skeleton className="h-48 w-full" />
-          ) : (recentSalesQuery.data ?? []).length === 0 ? (
-            <Card>
-              <CardBody className="py-6 text-sm text-muted">
-                No sales yet.
-              </CardBody>
-            </Card>
-          ) : (
-            <Card>
-              <ul className="divide-y divide-border">
-                {(recentSalesQuery.data ?? []).map((sale) => (
-                  <li key={sale.id}>
-                    <Link
-                      to={`/sales/${sale.id}`}
-                      className="row-hover flex items-center justify-between gap-4 px-5 py-4"
-                    >
-                      <div>
-                        <p className="font-medium">{sale.sale_number}</p>
-                        <p className="text-sm text-muted">
-                          {formatTime(sale.created_at)}
-                        </p>
-                      </div>
-                      <span className="tabular-nums font-semibold">
-                        {formatMoney(sale.total_amount)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-        </section>
-      </div>
-
-      <section>
-        <SectionHeader
-          title="Recent activity"
-          actionLabel="View all"
-          actionTo="/activity"
+        <WeeklyChart
+          data={weekBars}
+          selected={selectedBar}
+          onSelect={setSelectedBar}
         />
-        {activityQuery.isLoading ? (
-          <Skeleton className="h-32 w-full" />
-        ) : (
-          <ActivityPreviewList
-            items={(activityQuery.data ?? []).slice(0, 5)}
-            emptyLabel="No activity yet."
-          />
-        )}
-      </section>
-    </div>
-  )
-}
 
-function StatRow({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: number
-  tone: 'success' | 'warning' | 'danger'
-}) {
-  const dot =
-    tone === 'success'
-      ? 'bg-success'
-      : tone === 'warning'
-        ? 'bg-warning'
-        : 'bg-danger'
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="flex items-center gap-2 text-sm text-muted">
-        <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />
-        {label}
-      </span>
-      <span className="tabular-nums font-medium">{value}</span>
+        <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex justify-between text-sm">
+            <span className="font-extrabold text-gray-700">Week total</span>
+            <span className="font-black text-indigo-700">
+              {formatMoney(weekTotal)}
+            </span>
+          </div>
+          <div className="mb-4 flex justify-between text-sm">
+            <span className="font-extrabold text-emerald-700">Week profit</span>
+            <span className="font-black text-emerald-600">
+              {formatMoney(weekProfit)}
+            </span>
+          </div>
+
+        </div>
+
+        {(recentSalesQuery.data ?? []).length > 0 ? (
+          <div className="rounded-2xl border border-violet-100 bg-white shadow-sm">
+            <div className="border-b border-violet-50 px-4 py-3 font-extrabold text-sm text-gray-700">
+              Recent sales
+            </div>
+            <ul>
+              {(recentSalesQuery.data ?? []).map((sale) => (
+                <li key={sale.id} className="border-b border-violet-50 last:border-0">
+                  <Link
+                    to={`/sales/${sale.id}`}
+                    className="flex items-center justify-between gap-3 px-4 py-3"
+                  >
+                    <div>
+                      <div className="text-sm font-bold text-gray-800">
+                        {sale.sale_number}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {formatTime(sale.created_at)}
+                      </div>
+                    </div>
+                    <span className="font-black text-violet-700">
+                      {formatMoney(sale.total_amount)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

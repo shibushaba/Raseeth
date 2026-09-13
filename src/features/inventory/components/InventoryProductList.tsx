@@ -38,28 +38,28 @@ export function InventoryProductList({ products }: { products: Product[] }) {
           <li key={product.id}>
             <Link
               to={`/inventory/${product.id}`}
-              className="block rounded-2xl border border-violet-100 bg-white p-4 shadow-sm"
+              className="block rounded-2xl border border-border bg-surface p-4 shadow-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   {product.category ? (
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted">
                       {product.category}
                     </div>
                   ) : null}
-                  <div className="text-sm font-extrabold text-gray-800">
+                  <div className="text-sm font-extrabold text-foreground">
                     {product.name}
                   </div>
-                  <div className="mt-1 text-xs text-gray-400">
+                  <div className="mt-1 text-xs text-muted">
                     {product.product_code} · Stock: {product.current_quantity}
                   </div>
                 </div>
                 <StatusPill level={level} />
               </div>
 
-              <div className="mt-3 grid grid-cols-3 divide-x divide-violet-50 border-t border-violet-50 pt-3 text-center">
+              <div className="mt-3 grid grid-cols-3 divide-x divide-border border-t border-border pt-3 text-center">
                 <div>
-                  <div className="text-[10px] font-bold uppercase text-gray-400">
+                  <div className="text-[10px] font-bold uppercase text-muted">
                     Wholesale
                   </div>
                   <div className="text-sm font-extrabold text-red-500">
@@ -67,18 +67,18 @@ export function InventoryProductList({ products }: { products: Product[] }) {
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold uppercase text-gray-400">
+                  <div className="text-[10px] font-bold uppercase text-muted">
                     Retail
                   </div>
-                  <div className="text-sm font-extrabold text-violet-700">
+                  <div className="text-sm font-extrabold text-accent">
                     {formatMoney(product.retail_price)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold uppercase text-gray-400">
+                  <div className="text-[10px] font-bold uppercase text-muted">
                     Margin
                   </div>
-                  <div className="text-sm font-extrabold text-emerald-600">
+                  <div className="text-sm font-extrabold text-success">
                     {formatMoney(profit)}
                   </div>
                 </div>

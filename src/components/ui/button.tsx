@@ -9,13 +9,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'bg-accent text-white shadow-md hover:bg-violet-700 dark:hover:bg-violet-500',
+          'bg-accent text-white shadow-md hover:bg-violet-700',
         secondary:
-          'border-2 border-accent bg-surface text-accent hover:bg-accent-soft/50 dark:hover:bg-stone-800/60',
+          'border-2 border-accent bg-surface text-accent hover:bg-accent-soft/50',
         ghost:
-          'bg-transparent text-foreground hover:bg-accent-soft/60 dark:hover:bg-stone-800/60',
+          'bg-transparent text-foreground hover:bg-accent-soft/60',
         accent:
-          'bg-accent text-white shadow-md hover:bg-violet-700 dark:hover:bg-violet-500',
+          'bg-accent text-white shadow-md hover:bg-violet-700',
         success:
           'bg-success text-white shadow-md hover:bg-emerald-600',
         danger: 'bg-danger text-white shadow-md hover:bg-red-600',

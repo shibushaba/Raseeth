@@ -326,7 +326,7 @@ function ResultButton({
         type="button"
         className={cn(
           'flex min-h-12 w-full flex-col items-start rounded-lg px-3 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:min-h-11 sm:py-2.5',
-          active ? 'bg-accent-soft/60 dark:bg-teal-950/50' : 'row-hover',
+          active ? 'bg-accent-soft/60' : 'row-hover',
         )}
         onClick={onSelect}
         onMouseEnter={onHover}

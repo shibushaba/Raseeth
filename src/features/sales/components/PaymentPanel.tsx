@@ -84,7 +84,7 @@ export function PaymentPanel({
                 className={cn(
                   'flex min-h-[52px] cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 transition-all',
                   selected
-                    ? 'border-accent bg-accent-soft/60 dark:bg-violet-950/40'
+                    ? 'border-accent bg-accent-soft/60'
                     : 'border-border bg-surface hover:bg-accent-soft/30',
                 )}
               >
@@ -96,7 +96,7 @@ export function PaymentPanel({
                   onChange={() => onModeChange(value)}
                   className="sr-only"
                 />
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent dark:bg-violet-950 dark:text-violet-300">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
                   <Icon className="h-5 w-5" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">

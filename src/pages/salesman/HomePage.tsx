@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 
 import { ActionTile } from '@/components/dashboard/ActionTile'
 import { SectionHeader } from '@/components/dashboard/SectionHeader'
-import { PageHero } from '@/components/layout/PageHero'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getRecentActivity } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
@@ -28,13 +27,14 @@ export function SalesmanHomePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <PageHero
-        title={greetingForHour()}
-        subtitle="What do you want to do?"
-        tone="violet"
-      />
+      <div className="px-4 pt-6">
+        <h1 className="text-2xl font-black text-foreground">
+          {greetingForHour()}
+        </h1>
+        <p className="text-sm text-muted">What do you want to do?</p>
+      </div>
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-3 px-4">
         <ActionTile
           to="/sales"
           title="Sales"
@@ -51,7 +51,7 @@ export function SalesmanHomePage() {
         />
       </div>
 
-      <section>
+      <section className="px-4">
         <SectionHeader title="Recent" actionLabel="View all" actionTo="/activity" />
         {activityQuery.isLoading ? (
           <div className="space-y-3">

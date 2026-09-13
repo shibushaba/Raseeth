@@ -32,24 +32,24 @@ export function OwnerBillSheet({
       aria-label="Transaction bill"
     >
       <div
-        className="flex max-h-[85vh] w-full flex-col rounded-t-3xl bg-white"
+        className="flex max-h-[85vh] w-full flex-col rounded-t-3xl bg-surface"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 px-5 pb-2 pt-3">
-          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200" />
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="font-extrabold text-gray-800">Transaction Bill</div>
-              <div className="mt-0.5 text-xs text-gray-400">
+              <div className="font-extrabold text-foreground">Transaction Bill</div>
+              <div className="mt-0.5 text-xs text-muted">
                 {sale.sale_number} · {formatDateTime(sale.created_at)}
                 {sale.created_by_name ? ` · ${sale.created_by_name}` : ''}
               </div>
             </div>
-            <span className="rounded-full bg-indigo-100 px-2 py-1 text-xs font-bold uppercase text-indigo-700">
+            <span className="rounded-full bg-accent-soft px-2 py-1 text-xs font-bold uppercase text-accent">
               {sale.payments[0]?.payment_method ?? 'SALE'}
             </span>
           </div>
-          <div className="mt-1 text-xs font-medium text-gray-400">{payLabel}</div>
+          <div className="mt-1 text-xs font-medium text-muted">{payLabel}</div>
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto px-5 pb-5">
@@ -62,44 +62,44 @@ export function OwnerBillSheet({
             return (
               <div
                 key={item.id}
-                className="rounded-2xl border border-gray-100 bg-gray-50 p-4"
+                className="rounded-2xl border border-border bg-background p-4"
               >
-                <div className="text-sm font-bold text-gray-800">
+                <div className="text-sm font-bold text-foreground">
                   {item.product_name ?? 'Product'}
                 </div>
-                <div className="mb-2 text-xs text-gray-400">
+                <div className="mb-2 text-xs text-muted">
                   Qty: {item.quantity}
                 </div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between text-gray-500">
+                  <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-muted">
                     <span>Retail Price</span>
-                    <span className="font-semibold text-gray-700">
+                    <span className="font-semibold text-foreground">
                       {formatMoney(item.unit_price)}
                     </span>
                   </div>
                   {item.unit_cost ? (
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-muted">
                       <span>Cost (WAC)</span>
                       <span className="font-semibold text-red-500">
                         {formatMoney(item.unit_cost)}
                       </span>
                     </div>
                   ) : null}
-                  <div className="flex justify-between border-t border-gray-200 pt-1 font-bold text-gray-800">
+                  <div className="flex justify-between border-t border-border pt-1 font-bold text-foreground">
                     <span>Final Price</span>
-                    <span className="text-violet-700">
+                    <span className="text-accent">
                       {formatMoney(item.total_amount)}
                     </span>
                   </div>
                 </div>
                 {item.unit_cost ? (
                   <div className="mt-2 flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-1.5">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted">
                       Cost{' '}
                       <span className="font-semibold text-red-400">
                         {formatMoney(cost)}
                       </span>
-                      <span className="mx-1 text-gray-300">·</span>
+                      <span className="mx-1 text-muted">·</span>
                       Profit
                     </div>
                     <span
@@ -114,17 +114,17 @@ export function OwnerBillSheet({
             )
           })}
 
-          <div className="space-y-1.5 rounded-2xl border-2 border-indigo-100 p-4">
-            <div className="mb-2 text-sm font-bold text-gray-700">Summary</div>
-            <div className="flex justify-between font-extrabold text-gray-800">
+          <div className="space-y-1.5 rounded-2xl border-2 border-border p-4">
+            <div className="mb-2 text-sm font-bold text-foreground">Summary</div>
+            <div className="flex justify-between font-extrabold text-foreground">
               <span>Final Amount</span>
-              <span className="text-violet-700">
+              <span className="text-accent">
                 {formatMoney(sale.total_amount)}
               </span>
             </div>
             {totalCost > 0 ? (
-              <div className="space-y-1 border-t border-gray-100 pt-1.5">
-                <div className="flex justify-between text-xs text-gray-400">
+              <div className="space-y-1 border-t border-border pt-1.5">
+                <div className="flex justify-between text-xs text-muted">
                   <span>Total Cost</span>
                   <span className="font-semibold text-red-500">
                     {formatMoney(totalCost)}
@@ -146,11 +146,11 @@ export function OwnerBillSheet({
           </div>
         </div>
 
-        <div className="border-t border-gray-100 p-4">
+        <div className="border-t border-border p-4">
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-2xl bg-indigo-700 py-3.5 font-extrabold text-white active:bg-indigo-800"
+            className="w-full rounded-2xl bg-accent py-3.5 font-extrabold text-white active:bg-violet-800"
           >
             Close
           </button>

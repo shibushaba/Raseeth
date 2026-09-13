@@ -32,7 +32,7 @@ function typeLabel(type: ActivityItem['type']): string {
 function typeColor(type: ActivityItem['type']): string {
   switch (type) {
     case 'SALE':
-      return 'bg-violet-100 text-violet-700'
+      return 'bg-accent-soft text-accent'
     case 'RETURN':
       return 'bg-red-100 text-red-600'
     case 'STOCK_ADDED':
@@ -41,7 +41,7 @@ function typeColor(type: ActivityItem['type']): string {
     case 'PRODUCT_CREATED':
       return 'bg-indigo-100 text-indigo-700'
     default:
-      return 'bg-gray-100 text-gray-600'
+      return 'bg-accent-soft text-muted'
   }
 }
 
@@ -63,7 +63,7 @@ export function ActivityPage() {
   const groups = groupByDay(activityQuery.data ?? [])
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-lg flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
       <PortalBackBar
         title={role === 'SALESMAN' ? 'My Activity' : 'Activity'}
         onBack={() => navigate(role ? homePathFor(role) : '/')}
@@ -73,13 +73,13 @@ export function ActivityPage() {
         {activityQuery.isLoading ? (
           <div className="space-y-3" aria-busy="true">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded-2xl bg-violet-50" />
+              <div key={i} className="h-16 animate-pulse rounded-2xl bg-accent-soft" />
             ))}
           </div>
         ) : null}
 
         {activityQuery.error ? (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="text-sm text-danger" role="alert">
             {(() => {
               logTechnicalError('getRecentActivity', activityQuery.error)
               return toUserMessage(
@@ -93,7 +93,7 @@ export function ActivityPage() {
         {!activityQuery.isLoading &&
         !activityQuery.error &&
         (activityQuery.data?.length ?? 0) === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-gray-400">
+          <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted">
             <Activity className="h-8 w-8" aria-hidden />
             <p className="font-semibold">No activity yet</p>
           </div>
@@ -101,13 +101,13 @@ export function ActivityPage() {
 
         {groups.map((group) => (
           <section key={group.dayKey} className="mb-6">
-            <h2 className="mb-2 text-xs font-extrabold uppercase tracking-wider text-gray-400">
+            <h2 className="mb-2 text-xs font-extrabold uppercase tracking-wider text-muted">
               {group.label}
             </h2>
             <div className="space-y-2">
               {group.items.map((item) => {
                 const inner = (
-                  <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
                     <div className="flex items-start gap-3">
                       <span
                         className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${typeColor(item.type)}`}
@@ -115,10 +115,10 @@ export function ActivityPage() {
                         {typeLabel(item.type)}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-gray-800">
+                        <p className="text-sm font-semibold text-foreground">
                           {item.description ?? item.title}
                         </p>
-                        <p className="mt-1 text-xs text-gray-400">
+                        <p className="mt-1 text-xs text-muted">
                           {formatTime(item.createdAt)}
                           {item.actor?.name ? ` · ${item.actor.name}` : ''}
                         </p>
@@ -140,7 +140,7 @@ export function ActivityPage() {
         ))}
 
         {!activityQuery.isLoading && !activityQuery.error ? (
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-xs text-muted">
             Last 7 days of activity
           </p>
         ) : null}

@@ -9,7 +9,6 @@ import {
   Wallet,
 } from 'lucide-react'
 
-import { PortalHeader } from '@/components/layout/portal/PortalHeader'
 import { PortalTabs } from '@/components/layout/portal/PortalTabs'
 import { getInventorySummary, getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
@@ -34,7 +33,7 @@ function StockBar({ stock }: { stock: number }) {
         ? 'bg-amber-400'
         : 'bg-emerald-500'
   return (
-    <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100">
+    <div className="mt-2 h-1.5 w-full rounded-full bg-background">
       <div
         className={`h-1.5 rounded-full transition-all ${color}`}
         style={{ width: `${pct}%` }}
@@ -66,30 +65,10 @@ function InventoryDashboard({
         : formatMoney(totalValue)
 
   const cards = [
-    {
-      label: 'Total Products',
-      value: products.length,
-      color: 'bg-violet-600',
-      icon: Package,
-    },
-    {
-      label: 'Stock Value',
-      value: valueLabel,
-      color: 'bg-emerald-500',
-      icon: Wallet,
-    },
-    {
-      label: 'Low Stock',
-      value: lowStock.length,
-      color: 'bg-amber-400',
-      icon: AlertTriangle,
-    },
-    {
-      label: 'Out of Stock',
-      value: outOfStock.length,
-      color: 'bg-red-500',
-      icon: Ban,
-    },
+    { label: 'Products', value: products.length, color: 'bg-accent', icon: Package },
+    { label: 'Stock Value', value: valueLabel, color: 'bg-success', icon: Wallet },
+    { label: 'Low Stock', value: lowStock.length, color: 'bg-warning', icon: AlertTriangle },
+    { label: 'Out of Stock', value: outOfStock.length, color: 'bg-danger', icon: Ban },
   ]
 
   return (
@@ -98,25 +77,22 @@ function InventoryDashboard({
         {cards.map((card) => {
           const Icon = card.icon
           return (
-            <div
-              key={card.label}
-              className={`${card.color} rounded-2xl p-4 text-white`}
-            >
-              <Icon className="mb-2 h-6 w-6 opacity-90" aria-hidden />
-              <div className="text-2xl font-black">{card.value}</div>
-              <div className="mt-0.5 text-xs font-semibold opacity-80">
-                {card.label}
+            <div key={card.label} className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+              <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${card.color} text-white`}>
+                <Icon className="h-4 w-4" aria-hidden />
               </div>
+              <div className="text-2xl font-black text-foreground">{card.value}</div>
+              <div className="mt-0.5 text-xs font-semibold text-muted">{card.label}</div>
             </div>
           )
         })}
       </div>
 
       {products.length === 0 ? (
-        <div className="rounded-2xl border border-violet-100 bg-violet-50 p-6 text-center">
-          <Package className="mx-auto mb-2 h-8 w-8 text-violet-400" />
-          <p className="font-bold text-gray-600">No products yet</p>
-          <p className="mt-1 text-xs text-gray-400">
+        <div className="rounded-2xl border border-border bg-accent-soft/40 p-6 text-center">
+          <Package className="mx-auto mb-2 h-8 w-8 text-accent" />
+          <p className="font-bold text-foreground">No products yet</p>
+          <p className="mt-1 text-xs text-muted">
             Go to Products tab to add your first product
           </p>
         </div>
@@ -124,7 +100,7 @@ function InventoryDashboard({
 
       {outOfStock.length > 0 ? (
         <div>
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-red-600">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-danger">
             Out of Stock
           </p>
           {outOfStock.slice(0, 3).map((p) => (
@@ -133,8 +109,8 @@ function InventoryDashboard({
               className="mb-2 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-3"
             >
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-bold text-gray-800">{p.name}</div>
-                <div className="text-xs font-semibold text-red-500">
+                <div className="text-sm font-bold text-foreground">{p.name}</div>
+                <div className="text-xs font-semibold text-danger">
                   Stock: 0 · {p.product_code}
                 </div>
               </div>
@@ -145,7 +121,7 @@ function InventoryDashboard({
 
       {lowStock.length > 0 ? (
         <div>
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-amber-600">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-warning">
             Low Stock
           </p>
           {lowStock.slice(0, 3).map((p) => (
@@ -153,8 +129,8 @@ function InventoryDashboard({
               key={p.id}
               className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 p-3"
             >
-              <div className="text-sm font-bold text-gray-800">{p.name}</div>
-              <div className="text-xs font-semibold text-amber-600">
+              <div className="text-sm font-bold text-foreground">{p.name}</div>
+              <div className="text-xs font-semibold text-warning">
                 Stock: {p.current_quantity}
               </div>
               <StockBar stock={p.current_quantity} />
@@ -167,7 +143,7 @@ function InventoryDashboard({
         <button
           type="button"
           onClick={onGoAlerts}
-          className="w-full rounded-2xl border-2 border-emerald-500 py-3 text-sm font-bold text-emerald-700"
+          className="w-full rounded-2xl border-2 border-accent py-3 text-sm font-bold text-accent transition-colors hover:bg-accent-soft/30"
         >
           View All Alerts
         </button>
@@ -184,11 +160,11 @@ function InventoryAlerts({ products }: { products: Product[] }) {
 
   if (outOfStock.length === 0 && lowStock.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 p-12 text-gray-400">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+      <div className="flex flex-col items-center justify-center gap-2 p-12 text-muted">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
           <Package className="h-6 w-6" />
         </div>
-        <p className="font-bold text-gray-600">All stock levels look good</p>
+        <p className="font-bold text-foreground">All stock levels look good</p>
       </div>
     )
   }
@@ -197,7 +173,7 @@ function InventoryAlerts({ products }: { products: Product[] }) {
     <div className="space-y-4 overflow-y-auto p-4">
       {outOfStock.length > 0 ? (
         <div>
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-red-600">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-danger">
             Out of Stock
           </p>
           {outOfStock.map((p) => (
@@ -207,12 +183,10 @@ function InventoryAlerts({ products }: { products: Product[] }) {
               className="mb-2 flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-3"
             >
               <div>
-                <div className="text-sm font-bold text-gray-800">{p.name}</div>
-                <div className="text-xs font-semibold text-red-500">
-                  Stock: 0
-                </div>
+                <div className="text-sm font-bold text-foreground">{p.name}</div>
+                <div className="text-xs font-semibold text-danger">Stock: 0</div>
               </div>
-              <span className="text-xs font-bold text-emerald-700">
+              <span className="text-xs font-bold text-success">
                 Restock <ArrowRight className="inline h-3 w-3" />
               </span>
             </Link>
@@ -222,7 +196,7 @@ function InventoryAlerts({ products }: { products: Product[] }) {
 
       {lowStock.length > 0 ? (
         <div>
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-amber-600">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-warning">
             Low Stock
           </p>
           {lowStock.map((p) => (
@@ -233,12 +207,12 @@ function InventoryAlerts({ products }: { products: Product[] }) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-bold text-gray-800">{p.name}</div>
-                  <div className="text-xs font-semibold text-amber-600">
+                  <div className="text-sm font-bold text-foreground">{p.name}</div>
+                  <div className="text-xs font-semibold text-warning">
                     Stock: {p.current_quantity}
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700">
+                <span className="text-xs font-bold text-success">
                   Add Stock <ArrowRight className="inline h-3 w-3" />
                 </span>
               </div>
@@ -297,19 +271,24 @@ export function InventoryPage() {
     (summaryQuery.data?.low_stock ?? 0) +
     (summaryQuery.data?.out_of_stock ?? 0)
 
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'Manager'
-
   return (
-    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
-      <PortalHeader
-        tone="emerald"
-        subtitle="Inventory"
-        title={`Hi, ${firstName}`}
-        onLogout={() => void signOut()}
-        search={tab === 'products' ? search : undefined}
-        onSearchChange={tab === 'products' ? setSearch : undefined}
-        searchPlaceholder="Search products…"
-      />
+    <div className="flex min-h-dvh flex-col">
+      <div className="px-4 pb-2 pt-6">
+        <h1 className="text-2xl font-black text-foreground">Inventory</h1>
+        {tab === 'products' ? (
+          <div className="relative mt-2">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search products…"
+              className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-foreground placeholder-muted outline-none transition-colors focus:border-accent"
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-muted">Manage your stock</p>
+        )}
+      </div>
 
       <PortalTabs
         tone="emerald"
@@ -332,7 +311,7 @@ export function InventoryPage() {
       {tab === 'products' ? (
         <div className="flex flex-1 flex-col">
           {categories.length > 1 ? (
-            <div className="flex gap-2 overflow-x-auto border-b border-emerald-50 bg-white px-4 py-2">
+            <div className="flex gap-2 overflow-x-auto border-b border-border bg-surface px-4 py-2">
               {categories.map((cat) => (
                 <button
                   key={cat}
@@ -340,8 +319,8 @@ export function InventoryPage() {
                   onClick={() => setCategory(cat === 'All' ? null : cat)}
                   className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
                     (cat === 'All' && !category) || category === cat
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-emerald-50 text-emerald-700'
+                      ? 'bg-success text-white'
+                      : 'bg-success-soft text-success'
                   }`}
                 >
                   {cat}
@@ -356,12 +335,12 @@ export function InventoryPage() {
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-16 animate-pulse rounded-2xl bg-emerald-50"
+                    className="h-16 animate-pulse rounded-2xl bg-accent-soft"
                   />
                 ))}
               </div>
             ) : errorMessage ? (
-              <p className="p-4 text-sm text-red-600" role="alert">
+              <p className="p-4 text-sm text-danger" role="alert">
                 {errorMessage}
               </p>
             ) : (
@@ -370,14 +349,14 @@ export function InventoryPage() {
           </div>
 
           {permissions.canCreateProduct ? (
-            <div className="relative border-t border-emerald-100 bg-white p-3">
+            <div className="relative border-t border-border bg-surface p-3">
               <div
                 className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-white to-transparent"
                 aria-hidden
               />
               <Link
                 to="/inventory/new"
-                className="block w-full rounded-2xl bg-emerald-600 py-4 text-center text-sm font-extrabold text-white shadow-lg active:bg-emerald-700"
+                className="block w-full rounded-2xl bg-success py-4 text-center text-sm font-extrabold text-white shadow-lg transition-all active:scale-[0.98]"
               >
                 + Add New Product
               </Link>

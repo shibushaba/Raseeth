@@ -19,7 +19,7 @@ export function PosProductGrid({
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="h-36 animate-pulse rounded-2xl bg-violet-50"
+            className="h-36 animate-pulse rounded-2xl bg-accent-soft"
           />
         ))}
       </div>
@@ -28,7 +28,7 @@ export function PosProductGrid({
 
   if (products.length === 0) {
     return (
-      <div className="flex h-48 flex-col items-center justify-center gap-2 p-8 text-gray-400">
+      <div className="flex h-48 flex-col items-center justify-center gap-2 p-8 text-muted">
         <Package className="h-10 w-10" aria-hidden />
         <p className="text-center font-semibold">No products found</p>
       </div>
@@ -46,17 +46,17 @@ export function PosProductGrid({
             type="button"
             onClick={() => !isOut && onAdd(product)}
             disabled={isOut}
-            className={`rounded-2xl border border-violet-100 bg-white p-4 text-left shadow-sm transition-transform active:scale-95 ${isOut ? 'opacity-50' : ''}`}
+            className={`rounded-2xl border border-border bg-surface p-4 text-left shadow-sm transition-transform active:scale-95 ${isOut ? 'opacity-50' : ''}`}
           >
             {product.category ? (
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {product.category}
               </div>
             ) : null}
-            <div className="mt-0.5 text-sm font-extrabold leading-tight text-gray-800">
+            <div className="mt-0.5 text-sm font-extrabold leading-tight text-foreground">
               {product.name}
             </div>
-            <div className="mt-2 text-base font-black text-violet-700">
+            <div className="mt-2 text-base font-black text-accent">
               {formatMoney(product.retail_price)}
             </div>
             <div className="mt-0.5 text-xs font-bold text-red-500">
@@ -80,7 +80,7 @@ export function PosProductGrid({
               )}
             </div>
             {!isOut ? (
-              <div className="mt-2 w-full rounded-xl bg-violet-600 py-1.5 text-center text-xs font-bold text-white">
+              <div className="mt-2 w-full rounded-xl bg-accent py-1.5 text-center text-xs font-bold text-white">
                 + Add
               </div>
             ) : null}

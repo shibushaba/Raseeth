@@ -32,7 +32,7 @@ export function PeriodSwitcher({
             'min-h-11 rounded-xl px-4 text-sm font-bold transition-colors',
             value === opt.key
               ? 'bg-surface text-accent shadow-sm'
-              : 'text-stone-600 hover:text-foreground dark:text-stone-300 dark:hover:text-foreground',
+              : 'text-muted hover:text-foreground',
           )}
         >
           {opt.label}

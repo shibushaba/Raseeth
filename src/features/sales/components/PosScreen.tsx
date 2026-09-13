@@ -269,7 +269,7 @@ export function PosScreen() {
     }
 
     return (
-      <div className="flex min-h-[calc(100dvh-3rem)] flex-col bg-emerald-50">
+      <div className="flex min-h-dvh flex-col bg-success-soft">
         <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto p-6">
           <div className="mt-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500">
             <Check className="h-10 w-10 text-white" aria-hidden />
@@ -278,13 +278,13 @@ export function PosScreen() {
             <h2 className="text-2xl font-black text-emerald-700">
               Payment Successful!
             </h2>
-            <p className="mt-1 text-sm font-medium text-gray-500">
+            <p className="mt-1 text-sm font-medium text-muted">
               {completed.sale_number}
             </p>
           </div>
 
-          <div className="w-full overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
-            <div className="bg-violet-600 px-5 py-4 text-white">
+          <div className="w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+            <div className="bg-accent px-5 py-4 text-white">
               <div className="text-xs font-semibold opacity-70">Receipt</div>
               <div className="mt-0.5 text-xs opacity-60">
                 {new Date(completed.created_at).toLocaleString('en-IN')}
@@ -294,30 +294,30 @@ export function PosScreen() {
               {completed.receiptItems.map((item) => (
                 <div
                   key={item.product_code}
-                  className="border-b border-dashed border-gray-100 pb-3 last:border-0 last:pb-0"
+                  className="border-b border-dashed border-border pb-3 last:border-0 last:pb-0"
                 >
-                  <div className="text-sm font-bold text-gray-800">
+                  <div className="text-sm font-bold text-foreground">
                     {item.name}
                   </div>
-                  <div className="mb-1 text-xs text-gray-400">
+                  <div className="mb-1 text-xs text-muted">
                     Qty: {item.quantity} × {formatMoney(item.unit_price)}
                   </div>
-                  <div className="flex justify-between text-sm font-extrabold text-gray-800">
+                  <div className="flex justify-between text-sm font-extrabold text-foreground">
                     <span>Final</span>
-                    <span className="text-violet-700">
+                    <span className="text-accent">
                       {formatMoney(item.line_total)}
                     </span>
                   </div>
                 </div>
               ))}
-              <div className="space-y-1 border-t-2 border-dashed border-gray-200 pt-3">
+              <div className="space-y-1 border-t-2 border-dashed border-border pt-3">
                 <div className="flex justify-between">
-                  <span className="font-extrabold text-gray-800">Total</span>
-                  <span className="text-lg font-black text-violet-700">
+                  <span className="font-extrabold text-foreground">Total</span>
+                  <span className="text-lg font-black text-accent">
                     {formatMoney(completed.total_amount)}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm text-gray-500">
+                <div className="flex justify-between text-sm text-muted">
                   <span>Payment</span>
                   <span className="text-xs font-bold">
                     {completed.payments
@@ -325,7 +325,7 @@ export function PosScreen() {
                       .join(', ')}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm text-gray-500">
+                <div className="flex justify-between text-sm text-muted">
                   <span>Paid</span>
                   <span className="font-bold">{formatMoney(paid)}</span>
                 </div>
@@ -334,11 +334,11 @@ export function PosScreen() {
           </div>
         </div>
 
-        <div className="space-y-2 border-t border-emerald-100 bg-white p-4">
+        <div className="space-y-2 border-t border-border bg-surface p-4">
           <button
             type="button"
             onClick={handlePrint}
-            className="w-full rounded-2xl border-2 border-violet-600 py-3.5 text-sm font-extrabold text-violet-600"
+            className="w-full rounded-2xl border-2 border-accent py-3.5 text-sm font-extrabold text-accent"
           >
             Print Receipt
           </button>
@@ -349,13 +349,13 @@ export function PosScreen() {
               setScreen('browse')
               mutation.reset()
             }}
-            className="w-full rounded-2xl bg-violet-600 py-3.5 text-sm font-extrabold text-white active:bg-violet-700"
+            className="w-full rounded-2xl bg-accent py-3.5 text-sm font-extrabold text-white active:bg-violet-700"
           >
             New Sale
           </button>
           <Link
             to={`/sales/${completed.id}`}
-            className="block w-full rounded-2xl py-3 text-center text-sm font-bold text-violet-600"
+            className="block w-full rounded-2xl py-3 text-center text-sm font-bold text-accent"
           >
             View sale details
           </Link>
@@ -366,17 +366,17 @@ export function PosScreen() {
 
   if (screen === 'payment') {
     return (
-      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
-        <div className="flex items-center gap-3 border-b border-violet-100 bg-white px-4 py-3">
+      <div className="flex min-h-dvh flex-col">
+        <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
           <button
             type="button"
             onClick={() => setScreen('cart')}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-50 text-violet-700"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-accent"
             aria-label="Back to cart"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <h2 className="font-extrabold text-gray-800">Payment</h2>
+          <h2 className="font-extrabold text-foreground">Payment</h2>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
@@ -392,7 +392,7 @@ export function PosScreen() {
           ) : null}
         </div>
 
-        <div className="border-t border-violet-100 bg-white p-4">
+        <div className="border-t border-border bg-surface p-4">
           <button
             type="button"
             disabled={!canComplete}
@@ -410,26 +410,26 @@ export function PosScreen() {
 
   if (screen === 'cart') {
     return (
-      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
-        <div className="flex items-center gap-3 border-b border-violet-100 bg-white px-4 py-3">
+      <div className="flex min-h-dvh flex-col">
+        <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
           <button
             type="button"
             onClick={() => setScreen('browse')}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-50 text-violet-700"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-accent"
             aria-label="Back to products"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <h2 className="font-extrabold text-gray-800">Cart</h2>
-            <p className="text-xs text-gray-400">
+            <h2 className="font-extrabold text-foreground">Cart</h2>
+            <p className="text-xs text-muted">
               {cart.length} item{cart.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
 
         {cart.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-gray-400">
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted">
             <ShoppingCart className="h-12 w-12" aria-hidden />
             <p className="font-semibold">Cart is empty</p>
           </div>
@@ -442,14 +442,14 @@ export function PosScreen() {
                 return (
                   <div
                     key={item.product_id}
-                    className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm"
+                    className="rounded-2xl border border-border bg-surface p-4 shadow-sm"
                   >
                     <div className="flex gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-bold text-gray-800">
+                        <div className="truncate text-sm font-bold text-foreground">
                           {item.name}
                         </div>
-                        <div className="mt-0.5 text-sm font-extrabold text-violet-600">
+                        <div className="mt-0.5 text-sm font-extrabold text-accent">
                           {formatMoney(unit)} / unit
                         </div>
                         <div className="mt-0.5 text-xs font-semibold text-red-400">
@@ -471,17 +471,17 @@ export function PosScreen() {
                     </div>
 
                     <div className="mt-3 flex items-center">
-                      <div className="flex items-center rounded-xl bg-violet-50">
+                      <div className="flex items-center rounded-xl bg-accent-soft">
                         <button
                           type="button"
                           onClick={() =>
                             updateQty(item.product_id, item.quantity - 1)
                           }
-                          className="flex h-9 w-9 items-center justify-center text-lg font-extrabold text-violet-700"
+                          className="flex h-9 w-9 items-center justify-center text-lg font-extrabold text-accent"
                         >
                           −
                         </button>
-                        <span className="w-8 text-center font-extrabold text-gray-800">
+                        <span className="w-8 text-center font-extrabold text-foreground">
                           {item.quantity}
                         </span>
                         <button
@@ -489,12 +489,12 @@ export function PosScreen() {
                           onClick={() =>
                             updateQty(item.product_id, item.quantity + 1)
                           }
-                          className="flex h-9 w-9 items-center justify-center text-lg font-extrabold text-violet-700"
+                          className="flex h-9 w-9 items-center justify-center text-lg font-extrabold text-accent"
                         >
                           +
                         </button>
                       </div>
-                      <div className="ml-auto text-sm font-extrabold text-violet-700">
+                      <div className="ml-auto text-sm font-extrabold text-accent">
                         {formatMoney(line)}
                       </div>
                     </div>
@@ -503,17 +503,17 @@ export function PosScreen() {
               })}
             </div>
 
-            <div className="space-y-2 border-t border-violet-100 bg-white p-4">
-              <div className="flex justify-between border-t border-violet-50 pt-2">
-                <span className="font-extrabold text-gray-800">Total</span>
-                <span className="text-lg font-black text-violet-700">
+            <div className="space-y-2 border-t border-border bg-surface p-4">
+              <div className="flex justify-between border-t border-border pt-2">
+                <span className="font-extrabold text-foreground">Total</span>
+                <span className="text-lg font-black text-accent">
                   {formatMoney(total)}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setScreen('payment')}
-                className="w-full rounded-2xl bg-violet-600 py-4 text-base font-extrabold text-white shadow-md active:bg-violet-700"
+                className="w-full rounded-2xl bg-accent py-4 text-base font-extrabold text-white shadow-md active:bg-violet-700"
               >
                 Proceed to Payment · {formatMoney(total)}
               </button>
@@ -525,7 +525,7 @@ export function PosScreen() {
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+    <div className="flex min-h-dvh flex-col">
       <PortalHeader
         tone="violet"
         subtitle="Cashier"
@@ -549,7 +549,7 @@ export function PosScreen() {
       {browseTab === 'products' ? (
         <>
           {categories.length > 1 ? (
-            <div className="flex gap-2 overflow-x-auto border-b border-violet-50 bg-white px-4 py-2">
+            <div className="flex gap-2 overflow-x-auto border-b border-border bg-surface px-4 py-2">
               {categories.map((cat) => (
                 <button
                   key={cat}
@@ -559,8 +559,8 @@ export function PosScreen() {
                   }
                   className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
                     (cat === 'All' && !category) || category === cat
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-violet-50 text-violet-700'
+                      ? 'bg-accent text-white'
+                      : 'bg-accent-soft text-accent'
                   }`}
                 >
                   {cat}
@@ -590,11 +590,11 @@ export function PosScreen() {
       )}
 
       {cartCount > 0 ? (
-        <div className="border-t border-violet-100 bg-white p-3">
+        <div className="border-t border-border bg-surface p-3">
           <button
             type="button"
             onClick={() => setScreen('cart')}
-            className="flex w-full items-center justify-between rounded-2xl bg-violet-600 px-5 py-3.5 font-extrabold text-white active:bg-violet-700"
+            className="flex w-full items-center justify-between rounded-2xl bg-accent px-5 py-3.5 font-extrabold text-white active:bg-violet-700"
           >
             <span className="rounded-lg bg-white/20 px-2 py-0.5 text-sm">
               {cartCount}

@@ -1,29 +1,23 @@
 export const THEME_STORAGE_KEY = 'raseeth-theme'
 
-export type ThemePreference = 'light' | 'dark'
+export type ThemePreference = 'light'
 
-export function parseThemePreference(value: string | null): ThemePreference | null {
-  if (value === 'light' || value === 'dark') return value
-  return null
+export function parseThemePreference(_value: string | null): ThemePreference {
+  return 'light'
 }
 
-export function readStoredTheme(): ThemePreference | null {
-  if (typeof window === 'undefined') return null
-  return parseThemePreference(localStorage.getItem(THEME_STORAGE_KEY))
+export function readStoredTheme(): ThemePreference {
+  return 'light'
 }
 
-export function resolveTheme(
-  stored: ThemePreference | null,
-  prefersDark = false,
-): ThemePreference {
-  if (stored) return stored
-  return prefersDark ? 'dark' : 'light'
+export function resolveTheme(): ThemePreference {
+  return 'light'
 }
 
-export function applyThemeToDocument(theme: ThemePreference): void {
+export function applyThemeToDocument(_theme: ThemePreference): void {
   if (typeof document === 'undefined') return
-  document.documentElement.classList.toggle('dark', theme === 'dark')
-  document.documentElement.style.colorScheme = theme
+  document.documentElement.classList.remove('dark')
+  document.documentElement.style.colorScheme = 'light'
 }
 
 export function persistTheme(theme: ThemePreference): void {
@@ -32,9 +26,5 @@ export function persistTheme(theme: ThemePreference): void {
 }
 
 export function getInitialTheme(): ThemePreference {
-  const stored = readStoredTheme()
-  const prefersDark =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  return resolveTheme(stored, prefersDark)
+  return 'light'
 }

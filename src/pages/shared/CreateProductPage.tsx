@@ -7,7 +7,7 @@ export function CreateProductPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+    <div className="flex min-h-dvh flex-col">
       <PortalBackBar
         title="Add New Product"
         onBack={() => navigate('/inventory')}

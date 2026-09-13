@@ -94,10 +94,9 @@ export function MessagesPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-lg flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
       <PortalBackBar
         title="Messages"
-        subtitle="Notes between owner and salesman"
         onBack={() => navigate(role ? homePathFor(role) : '/')}
       />
 
@@ -105,13 +104,13 @@ export function MessagesPage() {
         {messagesQuery.isLoading ? (
           <div className="space-y-3" aria-busy="true">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded-2xl bg-violet-50" />
+              <div key={i} className="h-16 animate-pulse rounded-2xl bg-accent-soft" />
             ))}
           </div>
         ) : null}
 
         {messagesQuery.error ? (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="text-sm text-danger" role="alert">
             {toUserMessage(messagesQuery.error, 'Unable to load messages.')}
           </p>
         ) : null}
@@ -119,7 +118,7 @@ export function MessagesPage() {
         {!messagesQuery.isLoading &&
         !messagesQuery.error &&
         (messagesQuery.data?.length ?? 0) === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-gray-400">
+          <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted">
             <MessageSquare className="h-8 w-8" aria-hidden />
             <p className="font-semibold">No messages yet</p>
             <p className="text-xs">Send the first note below</p>
@@ -133,26 +132,21 @@ export function MessagesPage() {
               <div
                 key={m.id}
                 className={cn(
-                  'rounded-2xl border p-4 shadow-sm',
+                  'max-w-[80%] rounded-2xl px-4 py-3 shadow-sm',
                   mine
-                    ? 'ml-8 border-violet-100 bg-violet-50'
-                    : 'mr-8 border-emerald-100 bg-white',
+                    ? 'ml-auto bg-accent text-white'
+                    : 'mr-auto border border-border bg-surface',
                 )}
               >
                 <div className="mb-1 flex items-baseline justify-between gap-2">
-                  <p className="text-xs font-bold text-gray-600">
+                  <p className={cn('text-xs font-bold', mine ? 'text-white/80' : 'text-muted')}>
                     {roleLabel(m.sender_role)}
-                    {!m.is_read && m.receiver_id === user?.id ? (
-                      <span className="ml-1.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
-                        New
-                      </span>
-                    ) : null}
                   </p>
-                  <p className="text-[10px] text-gray-400">
+                  <p className={cn('text-[10px]', mine ? 'text-white/60' : 'text-muted')}>
                     {formatTime(m.created_at)}
                   </p>
                 </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+                <p className={cn('whitespace-pre-wrap text-sm leading-relaxed', mine ? 'text-white' : 'text-foreground')}>
                   {m.message}
                 </p>
               </div>
@@ -163,28 +157,29 @@ export function MessagesPage() {
       </div>
 
       <form
-        className="space-y-2 border-t border-violet-100 bg-white p-4"
+        className="flex items-end gap-2 border-t border-border bg-surface p-4"
         onSubmit={onSubmit}
       >
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Write a message…"
-          rows={2}
-          maxLength={2000}
-          aria-label="Message"
-          className="w-full resize-none rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-medium text-gray-800 outline-none focus:border-violet-400"
-        />
-        {error ? (
-          <p className="text-sm text-red-600" role="alert">{error}</p>
-        ) : null}
+        <div className="flex-1">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Write a message…"
+            rows={1}
+            maxLength={2000}
+            aria-label="Message"
+            className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none transition-colors focus:border-accent"
+          />
+          {error ? (
+            <p className="mt-1 text-xs text-danger" role="alert">{error}</p>
+          ) : null}
+        </div>
         <button
           type="submit"
           disabled={send.isPending || !draft.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 py-3.5 font-extrabold text-white disabled:opacity-40"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-white transition-all active:scale-95 disabled:opacity-40"
         >
           <Send className="h-4 w-4" aria-hidden />
-          {send.isPending ? 'Sending…' : 'Send'}
         </button>
       </form>
     </div>

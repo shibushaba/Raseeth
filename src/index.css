@@ -2,7 +2,7 @@
 @import 'tailwindcss';
 
 /*
-  Reference-aligned simple mobile POS — Nunito, violet primary, soft lavender canvas.
+  Raseeth — Nunito, violet primary, soft lavender canvas. Light mode only.
 */
 @theme {
   --font-sans: 'Nunito', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
@@ -31,36 +31,11 @@
   --radius-lg: 1.25rem;
   --radius-xl: 1.5rem;
 
-  --shadow-sm: 0 1px 2px rgba(124, 58, 237, 0.06);
-  --shadow-md: 0 4px 16px rgba(124, 58, 237, 0.1);
-  --shadow-dialog: 0 12px 40px rgba(124, 58, 237, 0.14);
+  --shadow-sm: 0 1px 3px rgba(124, 58, 237, 0.06);
+  --shadow-md: 0 4px 16px rgba(124, 58, 237, 0.08);
+  --shadow-dialog: 0 12px 40px rgba(124, 58, 237, 0.12);
 
-  --bottom-nav-height: 3.5rem;
-}
-
-.dark {
-  --color-background: #17141f;
-  --color-surface: #221c2e;
-  --color-foreground: #f3f4f6;
-  --color-muted: #9ca3af;
-  --color-border: #3b3260;
-  --color-border-strong: #4c4178;
-  --color-primary: #a78bfa;
-  --color-accent: #a78bfa;
-  --color-accent-soft: #3b2667;
-  --color-success: #34d399;
-  --color-success-soft: #064e3b;
-  --color-warning: #fbbf24;
-  --color-warning-soft: #78350f;
-  --color-danger: #f87171;
-  --color-danger-soft: #7f1d1d;
-  --color-inventory: #34d399;
-  --color-inventory-soft: #064e3b;
-  --color-owner: #818cf8;
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-dialog: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --bottom-nav-height: 5rem;
 }
 
 @layer base {
@@ -124,15 +99,15 @@
   }
 
   .inset-well {
-    @apply bg-accent-soft/70 dark:bg-stone-800/80;
+    @apply bg-accent-soft/70;
   }
 
   .row-hover {
-    @apply transition-colors hover:bg-accent-soft/40 focus-visible:bg-accent-soft/40 dark:hover:bg-stone-800/50 dark:focus-visible:bg-stone-800/50;
+    @apply transition-colors hover:bg-accent-soft/40 focus-visible:bg-accent-soft/40;
   }
 
   .muted-panel {
-    @apply bg-accent-soft/50 dark:bg-stone-800/50;
+    @apply bg-accent-soft/50;
   }
 
   .hero-violet {
@@ -149,5 +124,9 @@
 
   .portal-card {
     @apply block rounded-2xl border border-border bg-surface p-5 shadow-sm transition-shadow hover:shadow-md active:scale-[0.99];
+  }
+
+  .glass-nav {
+    @apply border-t border-border/40 bg-surface/85 backdrop-blur-xl;
   }
 }

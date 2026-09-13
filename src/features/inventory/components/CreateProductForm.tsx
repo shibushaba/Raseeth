@@ -71,7 +71,7 @@ export function CreateProductForm() {
         </div>
         <div>
           <p className="text-lg font-extrabold text-emerald-700">Product Created!</p>
-          <p className="mt-1 font-mono text-sm font-bold text-gray-600">
+          <p className="mt-1 font-mono text-sm font-bold text-muted">
             {createdCode}
           </p>
         </div>
@@ -90,7 +90,7 @@ export function CreateProductForm() {
               setCreatedId(null)
               mutation.reset()
             }}
-            className="w-full rounded-2xl border-2 border-violet-600 py-3.5 font-extrabold text-violet-600"
+            className="w-full rounded-2xl border-2 border-accent py-3.5 font-extrabold text-accent"
           >
             Add Another
           </button>
@@ -112,7 +112,7 @@ export function CreateProductForm() {
               name="description"
               rows={2}
               placeholder="Short description"
-              className="w-full rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-semibold text-gray-800 placeholder-gray-400 outline-none focus:border-violet-400"
+              className="w-full rounded-xl border border-border bg-accent-soft/50 px-4 py-3 text-sm font-semibold text-foreground placeholder-muted outline-none focus:border-accent"
             />
           </PortalField>
           <CategoryField />
@@ -144,7 +144,7 @@ export function CreateProductForm() {
               placeholder="0"
             />
           </PortalField>
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="mt-2 text-xs text-muted">
             Product ID is assigned automatically. Initial stock is recorded as a
             purchase.
           </p>
@@ -155,7 +155,7 @@ export function CreateProductForm() {
         <p className="text-sm font-semibold text-red-600" role="alert">{error}</p>
       ) : null}
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-violet-100 bg-white p-4">
+      <div className="fixed inset-x-0 bottom-0 border-t border-border bg-surface p-4">
         <button
           type="submit"
           disabled={mutation.isPending}

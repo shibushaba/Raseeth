@@ -41,24 +41,24 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#F5F3FF]">
-      <div className="bg-violet-600 px-5 pb-10 pt-14 text-center text-white">
+    <div className="flex min-h-dvh flex-col bg-background">
+      <div className="bg-accent px-5 pb-10 pt-14 text-center text-white">
         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
           <Store className="h-8 w-8" aria-hidden />
         </div>
         <h1 className="text-2xl font-black">Raseeth</h1>
         <p className="mt-1 text-sm font-medium opacity-70">
-          Retail Management System
+          Smart Shop Management
         </p>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-5">
-        <h2 className="mt-2 text-center text-lg font-extrabold text-gray-700">
+        <h2 className="mt-2 text-center text-lg font-extrabold text-foreground">
           Sign In
         </h2>
 
         {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-center text-sm font-semibold text-red-600">
+          <div className="rounded-xl border border-danger-soft bg-danger-soft px-4 py-2.5 text-center text-sm font-semibold text-danger">
             {error}
           </div>
         ) : null}
@@ -67,7 +67,7 @@ export function LoginPage() {
           <div>
             <label
               htmlFor="phone"
-              className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500"
+              className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted"
             >
               Mobile number
             </label>
@@ -83,14 +83,14 @@ export function LoginPage() {
                 setError(null)
               }}
               required
-              className="w-full rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 placeholder-gray-400 outline-none focus:border-violet-500"
+              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground placeholder-muted outline-none transition-colors focus:border-accent"
             />
           </div>
 
           <div>
             <label
               htmlFor="password"
-              className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500"
+              className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted"
             >
               Password
             </label>
@@ -106,34 +106,30 @@ export function LoginPage() {
               }}
               onKeyDown={(e) => e.key === 'Enter' && void onSubmit(e as unknown as FormEvent)}
               required
-              className="w-full rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 placeholder-gray-400 outline-none focus:border-violet-500"
+              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground placeholder-muted outline-none transition-colors focus:border-accent"
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-2xl bg-violet-600 py-4 text-base font-extrabold text-white shadow-md transition-colors active:bg-violet-700 disabled:opacity-60"
+            className="w-full rounded-2xl bg-accent py-4 text-base font-extrabold text-white shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
           >
             {submitting ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
-        <div className="space-y-1 rounded-2xl border border-violet-100 bg-violet-50 p-4 text-xs text-gray-500">
-          <div className="mb-2 font-extrabold text-gray-600">Demo accounts</div>
+        <div className="space-y-1 rounded-2xl border border-border bg-accent-soft/40 p-4 text-xs text-muted">
+          <div className="mb-2 font-extrabold text-foreground">Demo accounts</div>
           <div className="flex justify-between">
             <span className="font-semibold">Owner</span>
-            <span>9876543210 · owner123</span>
+            <span>9876500001 · DemoOwner123!</span>
           </div>
           <div className="flex justify-between">
             <span className="font-semibold">Salesman</span>
-            <span>9876543211 · sales123</span>
+            <span>9876500002 · DemoSalesman123!</span>
           </div>
         </div>
-      </div>
-
-      <div className="p-4 text-center">
-        <p className="text-xs font-medium text-gray-300">Raseeth · Shop POS</p>
       </div>
     </div>
   )

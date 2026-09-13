@@ -50,7 +50,7 @@ export function SalesHistoryList({
     return (
       <div className="space-y-3 p-4" aria-busy="true">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded-2xl bg-violet-50" />
+          <div key={i} className="h-16 animate-pulse rounded-2xl bg-accent-soft" />
         ))}
       </div>
     )
@@ -59,7 +59,7 @@ export function SalesHistoryList({
   if (salesQuery.error) {
     logTechnicalError('getSales', salesQuery.error)
     return (
-      <p className="p-4 text-sm text-red-600" role="alert">
+      <p className="p-4 text-sm text-danger" role="alert">
         {toUserMessage(salesQuery.error, 'Unable to load sales.')}
       </p>
     )
@@ -69,7 +69,7 @@ export function SalesHistoryList({
 
   if (sales.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 p-12 text-gray-400">
+      <div className="flex flex-col items-center justify-center gap-2 p-12 text-muted">
         <Receipt className="h-8 w-8" aria-hidden />
         <p className="font-semibold">No sales yet</p>
       </div>
@@ -83,7 +83,7 @@ export function SalesHistoryList({
       <div className="space-y-4 p-4">
         {groups.map((group) => (
           <section key={group.label}>
-            <h2 className="mb-2 text-xs font-extrabold uppercase tracking-wider text-gray-400">
+            <h2 className="mb-2 text-xs font-extrabold uppercase tracking-wider text-muted">
               {group.label}
             </h2>
             <div className="space-y-3">
@@ -93,19 +93,19 @@ export function SalesHistoryList({
                     key={sale.id}
                     type="button"
                     onClick={() => setSelectedId(sale.id)}
-                    className="w-full rounded-2xl border border-violet-100 bg-white p-4 text-left shadow-sm"
+                    className="w-full rounded-2xl border border-border bg-surface p-4 text-left shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-sm font-bold text-gray-800">
+                        <div className="text-sm font-bold text-foreground">
                           {sale.sale_number}
                         </div>
-                        <div className="mt-0.5 text-xs text-gray-400">
+                        <div className="mt-0.5 text-xs text-muted">
                           {formatTime(sale.created_at)}
                           {sale.created_by_name ? ` · ${sale.created_by_name}` : ''}
                         </div>
                       </div>
-                      <div className="font-black text-violet-700">
+                      <div className="font-black text-accent">
                         {formatMoney(sale.total_amount)}
                       </div>
                     </div>
@@ -114,19 +114,19 @@ export function SalesHistoryList({
                   <Link
                     key={sale.id}
                     to={`/sales/${sale.id}`}
-                    className="block rounded-2xl border border-violet-100 bg-white p-4 shadow-sm"
+                    className="block rounded-2xl border border-border bg-surface p-4 shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-sm font-bold text-gray-800">
+                        <div className="text-sm font-bold text-foreground">
                           {sale.sale_number}
                         </div>
-                        <div className="mt-0.5 text-xs text-gray-400">
+                        <div className="mt-0.5 text-xs text-muted">
                           {formatTime(sale.created_at)}
                           {sale.created_by_name ? ` · ${sale.created_by_name}` : ''}
                         </div>
                       </div>
-                      <div className="font-black text-violet-700">
+                      <div className="font-black text-accent">
                         {formatMoney(sale.total_amount)}
                       </div>
                     </div>

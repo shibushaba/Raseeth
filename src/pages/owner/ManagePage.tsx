@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { ShoppingCart, Store, User } from 'lucide-react'
+import { Store } from 'lucide-react'
 
-import { PortalHeader } from '@/components/layout/portal/PortalHeader'
 import { getTeamProfiles } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -14,16 +12,17 @@ function roleLabel(role: string): string {
   return role
 }
 
-function RoleIcon({ role }: { role: string }) {
-  if (role === 'OWNER') {
-    return <Store className="h-4 w-4 text-indigo-700" aria-hidden />
-  }
-  return <ShoppingCart className="h-4 w-4 text-indigo-700" aria-hidden />
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 export function OwnerManagePage() {
-  const { profile, signOut } = useAuth()
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'Owner'
+  const { profile } = useAuth()
 
   const teamQuery = useQuery({
     queryKey: queryKeys.team.profiles,
@@ -33,42 +32,34 @@ export function OwnerManagePage() {
   const workers = (teamQuery.data ?? []).filter((p) => p.role === 'SALESMAN')
 
   return (
-    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
-      <PortalHeader
-        tone="indigo"
-        subtitle="Owner"
-        title={`Hi, ${firstName}`}
-        onLogout={() => void signOut()}
-      />
+    <div className="flex min-h-dvh flex-col">
+      <div className="px-4 pb-2 pt-6">
+        <h1 className="text-2xl font-black text-foreground">Team & Shop</h1>
+        <p className="text-sm text-muted">Manage your team</p>
+      </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <div className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-violet-50 px-4 py-3">
-            <div>
-              <h3 className="font-extrabold text-gray-700">Shop</h3>
-              <p className="text-xs text-gray-400">Single-shop pilot</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100">
-              <Store className="h-5 w-5 text-indigo-700" aria-hidden />
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+          <div className="flex items-center gap-3 px-4 py-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft">
+              <Store className="h-5 w-5 text-accent" aria-hidden />
             </div>
             <div className="flex-1">
-              <div className="text-sm font-bold text-gray-800">Raseeth Shop</div>
-              <div className="text-xs text-gray-400">
+              <div className="text-sm font-bold text-foreground">Raseeth Shop</div>
+              <div className="text-xs text-muted">
                 {workers.length} worker{workers.length !== 1 ? 's' : ''}
               </div>
             </div>
-            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+            <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-[10px] font-bold text-success">
               Active
             </span>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm">
-          <div className="border-b border-violet-50 px-4 py-3">
-            <h3 className="font-extrabold text-gray-700">Team</h3>
-            <p className="text-xs text-gray-400">
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+          <div className="border-b border-border px-4 py-3">
+            <h3 className="font-extrabold text-foreground">Team</h3>
+            <p className="text-xs text-muted">
               {teamQuery.data?.length ?? 0} members
             </p>
           </div>
@@ -76,13 +67,13 @@ export function OwnerManagePage() {
           {teamQuery.isLoading ? (
             <div className="space-y-3 p-4" aria-busy="true">
               {Array.from({ length: 2 }).map((_, i) => (
-                <div key={i} className="h-14 animate-pulse rounded-xl bg-indigo-50" />
+                <div key={i} className="h-14 animate-pulse rounded-xl bg-accent-soft" />
               ))}
             </div>
           ) : null}
 
           {teamQuery.error ? (
-            <p className="p-4 text-sm text-red-600" role="alert">
+            <p className="p-4 text-sm text-danger" role="alert">
               {(() => {
                 logTechnicalError('getTeamProfiles', teamQuery.error)
                 return toUserMessage(
@@ -98,22 +89,22 @@ export function OwnerManagePage() {
               {(teamQuery.data ?? []).map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center gap-3 border-b border-gray-50 px-4 py-3 last:border-0"
+                  className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100">
-                    <RoleIcon role={member.role} />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
+                    {getInitials(member.full_name)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold text-gray-800">
+                    <div className="text-sm font-bold text-foreground">
                       {member.full_name}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-muted">
                       {roleLabel(member.role)}
                       {member.phone ? ` · ${member.phone}` : ''}
                     </div>
                   </div>
                   {member.id === profile?.id ? (
-                    <span className="text-[10px] font-bold text-indigo-600">
+                    <span className="text-[10px] font-bold text-accent">
                       You
                     </span>
                   ) : null}
@@ -121,37 +112,6 @@ export function OwnerManagePage() {
               ))}
             </div>
           ) : null}
-        </div>
-
-        <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-xs text-gray-500">
-          <div className="mb-1 flex items-center gap-2 font-extrabold text-indigo-700">
-            <User className="h-3.5 w-3.5" aria-hidden />
-            Adding workers
-          </div>
-          <p>
-            New team members are created in Supabase Auth and assigned a profile
-            with the Salesman role. Contact your administrator to add accounts.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
-          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">
-            Quick links
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Link
-              to="/activity"
-              className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-3 text-center text-xs font-bold text-violet-700"
-            >
-              Activity
-            </Link>
-            <Link
-              to="/messages"
-              className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-3 text-center text-xs font-bold text-violet-700"
-            >
-              Messages
-            </Link>
-          </div>
         </div>
       </div>
     </div>

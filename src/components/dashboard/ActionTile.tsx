@@ -20,8 +20,8 @@ export function ActionTile({
 }) {
   const iconWrap =
     tone === 'emerald'
-      ? 'bg-inventory-soft text-inventory dark:bg-emerald-950 dark:text-emerald-300'
-      : 'bg-accent-soft text-accent dark:bg-violet-950 dark:text-violet-300'
+      ? 'bg-inventory-soft text-inventory'
+      : 'bg-accent-soft text-accent'
 
   return (
     <Link to={to} className={cn('portal-card group', className)}>

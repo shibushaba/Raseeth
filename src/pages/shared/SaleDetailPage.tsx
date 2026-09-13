@@ -27,8 +27,8 @@ export function SaleDetailPage() {
   if (saleQuery.isLoading) {
     return (
       <div className="space-y-4 p-4" aria-busy="true">
-        <div className="h-24 animate-pulse rounded-2xl bg-violet-50" />
-        <div className="h-32 animate-pulse rounded-2xl bg-violet-50" />
+        <div className="h-24 animate-pulse rounded-2xl bg-accent-soft" />
+        <div className="h-32 animate-pulse rounded-2xl bg-accent-soft" />
       </div>
     )
   }
@@ -38,7 +38,7 @@ export function SaleDetailPage() {
     return (
       <div className="p-4">
         <PortalBackBar title="Sale" onBack={() => navigate(backTo)} />
-        <p className="mt-4 text-sm text-red-600" role="alert">
+        <p className="mt-4 text-sm text-danger" role="alert">
           {toUserMessage(saleQuery.error, 'That sale could not be found.')}
         </p>
       </div>
@@ -77,7 +77,7 @@ export function SaleDetailPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-lg flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
       <PortalBackBar
         title={isOwner ? 'Transaction Bill' : 'Sale Receipt'}
         subtitle={sale.sale_number}
@@ -85,7 +85,7 @@ export function SaleDetailPage() {
       />
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <div className="rounded-2xl bg-violet-600 p-4 text-white">
+        <div className="rounded-2xl bg-accent p-4 text-white shadow-md">
           <div className="text-xs font-semibold opacity-70">Total</div>
           <div className="text-3xl font-black">{formatMoney(sale.total_amount)}</div>
           <div className="mt-1 text-xs opacity-70">
@@ -97,14 +97,14 @@ export function SaleDetailPage() {
         {canReturn ? (
           <Link
             to={`/sales/${sale.id}/return`}
-            className="block rounded-2xl border-2 border-violet-600 py-3 text-center text-sm font-extrabold text-violet-600"
+            className="block rounded-2xl border-2 border-accent py-3 text-center text-sm font-extrabold text-accent transition-colors hover:bg-accent-soft/30"
           >
             Return Items
           </Link>
         ) : null}
 
         <PortalCard title="Items">
-          <ul className="divide-y divide-violet-50">
+          <ul className="divide-y divide-border">
             {sale.items.map((item) => {
               const unitCost = item.unit_cost ? parseMoney(item.unit_cost) : 0
               const cost = unitCost * item.quantity
@@ -112,24 +112,24 @@ export function SaleDetailPage() {
 
               return (
                 <li key={item.id} className="p-4">
-                  <div className="text-sm font-bold text-gray-800">
+                  <div className="text-sm font-bold text-foreground">
                     {item.product_name ?? 'Product'}
                   </div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-muted">
                     {item.quantity} × {formatMoney(item.unit_price)}
                   </div>
                   <div className="mt-2 flex justify-between text-sm font-extrabold">
-                    <span className="text-gray-600">Line total</span>
-                    <span className="text-violet-700">
+                    <span className="text-muted">Line total</span>
+                    <span className="text-accent">
                       {formatMoney(item.total_amount)}
                     </span>
                   </div>
                   {isOwner && item.unit_cost ? (
                     <div className="mt-2 flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-1.5 text-xs">
-                      <span className="text-gray-500">
+                      <span className="text-muted">
                         Cost {formatMoney(cost)} · Profit
                       </span>
-                      <span className="font-extrabold text-emerald-700">
+                      <span className="font-extrabold text-success">
                         +{formatMoney(profit)}
                       </span>
                     </div>
@@ -143,14 +143,14 @@ export function SaleDetailPage() {
         <PortalCard title="Payment">
           <ul className="space-y-2 p-4">
             {sale.payments.length === 0 ? (
-              <li className="text-sm text-gray-400">Payment not recorded</li>
+              <li className="text-sm text-muted">Payment not recorded</li>
             ) : (
               sale.payments.map((pay) => (
                 <li
                   key={pay.id}
                   className="flex items-center justify-between text-sm"
                 >
-                  <span className="text-gray-500">
+                  <span className="text-muted">
                     {PAYMENT_METHOD_LABEL[pay.payment_method]}
                   </span>
                   <span className="font-bold">{formatMoney(pay.amount)}</span>
@@ -161,14 +161,14 @@ export function SaleDetailPage() {
         </PortalCard>
 
         {isOwner && totalCost > 0 ? (
-          <div className="rounded-2xl border-2 border-indigo-100 p-4">
+          <div className="rounded-2xl border-2 border-border p-4">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Total Cost</span>
-              <span className="font-bold text-red-500">{formatMoney(totalCost)}</span>
+              <span className="text-muted">Total Cost</span>
+              <span className="font-bold text-danger">{formatMoney(totalCost)}</span>
             </div>
             <div className="mt-2 flex justify-between font-extrabold">
-              <span className="text-emerald-700">Gross Profit</span>
-              <span className="text-emerald-700">
+              <span className="text-success">Gross Profit</span>
+              <span className="text-success">
                 +{formatMoney(totalProfit)}
               </span>
             </div>
@@ -177,7 +177,7 @@ export function SaleDetailPage() {
 
         {sale.returns.length > 0 ? (
           <PortalCard title="Returns">
-            <ul className="divide-y divide-violet-50">
+            <ul className="divide-y divide-border">
               {sale.returns.map((ret) => (
                 <li key={ret.id}>
                   <Link
@@ -186,11 +186,11 @@ export function SaleDetailPage() {
                   >
                     <div>
                       <p className="text-sm font-bold">{ret.return_number}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-muted">
                         {formatDateTime(ret.created_at)}
                       </p>
                     </div>
-                    <span className="font-bold text-red-500">
+                    <span className="font-bold text-danger">
                       {formatMoney(ret.total_amount)}
                     </span>
                   </Link>
@@ -201,11 +201,11 @@ export function SaleDetailPage() {
         ) : null}
       </div>
 
-      <div className="space-y-2 border-t border-violet-100 bg-white p-4">
+      <div className="space-y-2 border-t border-border bg-surface p-4">
         <button
           type="button"
           onClick={handlePrint}
-          className="w-full rounded-2xl border-2 border-violet-600 py-3.5 text-sm font-extrabold text-violet-600"
+          className="w-full rounded-2xl border-2 border-accent py-3.5 text-sm font-extrabold text-accent transition-colors hover:bg-accent-soft/30"
         >
           Print Receipt
         </button>

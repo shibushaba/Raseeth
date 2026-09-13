@@ -140,8 +140,8 @@ export function ReturnItemsPage() {
   if (saleQuery.isLoading) {
     return (
       <div className="space-y-4" aria-busy="true">
-        <div className="card h-4 w-24 animate-pulse bg-stone-50 dark:bg-stone-800/50" />
-        <div className="card h-10 w-48 animate-pulse bg-stone-50 dark:bg-stone-800/50" />
+        <div className="card h-4 w-24 animate-pulse bg-accent-soft" />
+        <div className="card h-10 w-48 animate-pulse bg-accent-soft" />
       </div>
     )
   }
@@ -193,7 +193,7 @@ export function ReturnItemsPage() {
             </Button>
             <Link
               to={`/returns/${completed.id}`}
-              className="inline-flex h-11 items-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-800/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="inline-flex h-11 items-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold hover:bg-accent-soft/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               View return
             </Link>
@@ -317,8 +317,8 @@ export function ReturnItemsPage() {
                       className={cn(
                         'flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-3 text-sm font-medium transition-colors',
                         activeMethod === method
-                          ? 'border-accent bg-accent-soft text-accent dark:bg-teal-950/60 dark:text-teal-300'
-                          : 'border-border bg-surface hover:bg-stone-50 dark:hover:bg-stone-800/60',
+                          ? 'border-accent bg-accent-soft text-accent'
+                          : 'border-border bg-surface hover:bg-accent-soft/30',
                       )}
                     >
                       <input

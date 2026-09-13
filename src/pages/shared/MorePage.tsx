@@ -1,7 +1,6 @@
 import { Activity, MessageSquare, Search, Settings } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardBody } from '@/components/ui/card'
 import { getUnreadMessageCount } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
@@ -24,29 +23,22 @@ export function MorePage() {
   const items = [
     {
       label: 'Activity',
-      description: 'Recent sales and stock updates',
       to: '/activity',
       icon: Activity,
     },
     {
       label: 'Messages',
-      description:
-        unread > 0
-          ? `${unread} unread message${unread === 1 ? '' : 's'}`
-          : 'Talk with your team',
       to: '/messages',
       icon: MessageSquare,
       badge: unread > 0 ? unread : undefined,
     },
     {
       label: 'Search',
-      description: 'Find products, sales, and returns',
       action: openSearch,
       icon: Search,
     },
     {
       label: 'Settings',
-      description: 'Appearance and account',
       to: '/settings',
       icon: Settings,
     },
@@ -54,20 +46,21 @@ export function MorePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <PageHeader title="More" description="Activity, messages, and settings." />
+      <div className="px-4 pt-6">
+        <h1 className="text-2xl font-black text-foreground">More</h1>
+      </div>
 
-      <ul className="space-y-2">
+      <ul className="space-y-2 px-4">
         {items.map((item) => {
           const Icon = item.icon
           const inner = (
             <Card className="transition-shadow hover:shadow-md">
               <CardBody className="flex items-center gap-4 py-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent dark:bg-teal-950 dark:text-teal-300">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
                   <Icon className="h-5 w-5" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{item.label}</p>
-                  <p className="text-sm text-muted">{item.description}</p>
                 </div>
                 {item.badge ? (
                   <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-white">
@@ -104,13 +97,15 @@ export function MorePage() {
         })}
       </ul>
 
-      <button
-        type="button"
-        onClick={() => void signOut()}
-        className="w-full rounded-lg border border-border py-3 text-sm font-medium text-muted hover:bg-stone-50 hover:text-foreground dark:hover:bg-stone-900"
-      >
-        Sign out
-      </button>
+      <div className="px-4">
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="w-full rounded-2xl border border-border bg-surface py-3 text-sm font-medium text-muted transition-colors hover:bg-accent-soft/30 hover:text-foreground"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   )
 }

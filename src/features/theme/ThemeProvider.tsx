@@ -1,17 +1,12 @@
 import {
   createContext,
-  useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from 'react'
 
 import {
-  getInitialTheme,
-  persistTheme,
-  readStoredTheme,
+  applyThemeToDocument,
   type ThemePreference,
 } from '@/lib/theme'
 
@@ -23,23 +18,11 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemePreference>(() => getInitialTheme())
-
-  useEffect(() => {
-    persistTheme(theme)
-  }, [theme])
-
-  const setTheme = useCallback((next: ThemePreference) => {
-    setThemeState(next)
-    persistTheme(next)
-  }, [])
+  applyThemeToDocument('light')
 
   const value = useMemo(
-    () => ({
-      theme,
-      setTheme,
-    }),
-    [theme, setTheme],
+    () => ({ theme: 'light' as const, setTheme: () => {} }),
+    [],
   )
 
   return (
@@ -61,9 +44,5 @@ export function useThemeOptional(): ThemeContextValue | null {
 }
 
 export function syncThemeFromStorage(): ThemePreference {
-  const stored = readStoredTheme()
-  const initial = getInitialTheme()
-  if (stored) persistTheme(stored)
-  else persistTheme(initial)
-  return stored ?? initial
+  return 'light'
 }

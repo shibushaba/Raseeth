@@ -48,7 +48,7 @@ function StockBar({ stock }: { stock: number }) {
         ? 'bg-amber-400'
         : 'bg-emerald-500'
   return (
-    <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100">
+    <div className="mt-2 h-1.5 w-full rounded-full bg-background">
       <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
     </div>
   )
@@ -123,8 +123,8 @@ export function ProductDetailPage() {
   if (productQuery.isLoading) {
     return (
       <div className="space-y-4 p-4" aria-busy="true">
-        <div className="h-32 animate-pulse rounded-2xl bg-emerald-50" />
-        <div className="h-24 animate-pulse rounded-2xl bg-emerald-50" />
+        <div className="h-32 animate-pulse rounded-2xl bg-accent-soft" />
+        <div className="h-24 animate-pulse rounded-2xl bg-accent-soft" />
       </div>
     )
   }
@@ -133,7 +133,7 @@ export function ProductDetailPage() {
     return (
       <div className="p-4">
         <PortalBackBar title="Product" onBack={() => navigate('/inventory')} />
-        <p className="mt-4 text-sm text-red-600" role="alert">
+        <p className="mt-4 text-sm text-danger" role="alert">
           {toUserMessage(productQuery.error, 'That product could not be found.')}
         </p>
       </div>
@@ -152,15 +152,15 @@ export function ProductDetailPage() {
   if (screen === 'addStock' && permissions.canAddInventory) {
     const newStock = product.current_quantity + addQty
     return (
-      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+      <div className="flex min-h-dvh flex-col">
         <PortalBackBar title="Add Stock" onBack={() => setScreen('detail')} />
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <PortalCard>
             <div className="flex items-center gap-3 p-4">
-              <Package className="h-8 w-8 text-emerald-600" aria-hidden />
+              <Package className="h-8 w-8 text-success" aria-hidden />
               <div>
-                <div className="text-sm font-extrabold text-gray-800">{product.name}</div>
-                <div className="text-xs text-gray-400">{product.product_code}</div>
+                <div className="text-sm font-extrabold text-foreground">{product.name}</div>
+                <div className="text-xs text-muted">{product.product_code}</div>
               </div>
             </div>
           </PortalCard>
@@ -168,15 +168,15 @@ export function ProductDetailPage() {
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs font-semibold text-gray-500">Current</div>
-                <div className="text-3xl font-black text-gray-800">
+                <div className="text-xs font-semibold text-muted">Current</div>
+                <div className="text-3xl font-black text-foreground">
                   {product.current_quantity}
                 </div>
               </div>
-              <div className="text-2xl text-gray-400">→</div>
+              <div className="text-2xl text-muted">→</div>
               <div className="text-right">
-                <div className="text-xs font-semibold text-emerald-600">New</div>
-                <div className="text-3xl font-black text-emerald-600">{newStock}</div>
+                <div className="text-xs font-semibold text-success">New</div>
+                <div className="text-3xl font-black text-success">{newStock}</div>
               </div>
             </div>
           </div>
@@ -186,28 +186,28 @@ export function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => setAddQty((q) => Math.max(0, q - 1))}
-                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-2xl font-extrabold text-gray-700"
+                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-background text-2xl font-extrabold text-foreground"
               >
                 −
               </button>
               <div className="text-center">
-                <div className="text-5xl font-black text-gray-800">{addQty}</div>
-                <div className="text-xs text-gray-400">units</div>
+                <div className="text-5xl font-black text-foreground">{addQty}</div>
+                <div className="text-xs text-muted">units</div>
               </div>
               <button
                 type="button"
                 onClick={() => setAddQty((q) => q + 1)}
-                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-2xl font-extrabold text-white"
+                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-success text-2xl font-extrabold text-white"
               >
                 +
               </button>
             </div>
           </PortalCard>
 
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
         </div>
 
-        <div className="border-t border-violet-100 bg-white p-4">
+        <div className="border-t border-border bg-surface p-4">
           <button
             type="button"
             disabled={addQty === 0 || addMutation.isPending}
@@ -223,7 +223,7 @@ export function ProductDetailPage() {
               }
               addMutation.mutate(parsed.data)
             }}
-            className="w-full rounded-2xl bg-emerald-600 py-4 font-extrabold text-white disabled:opacity-40"
+            className="w-full rounded-2xl bg-success py-4 font-extrabold text-white disabled:opacity-40"
           >
             {addMutation.isPending ? 'Saving…' : `Confirm — Add ${addQty} units`}
           </button>
@@ -240,13 +240,13 @@ export function ProductDetailPage() {
         : null
 
     return (
-      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+      <div className="flex min-h-dvh flex-col">
         <PortalBackBar title="Fix Stock" onBack={() => setScreen('detail')} />
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <PortalCard>
             <div className="p-4">
-              <div className="text-sm font-extrabold text-gray-800">{product.name}</div>
-              <div className="mt-1 text-xs text-gray-400">
+              <div className="text-sm font-extrabold text-foreground">{product.name}</div>
+              <div className="mt-1 text-xs text-muted">
                 Current: {product.current_quantity} units
               </div>
             </div>
@@ -260,19 +260,19 @@ export function ProductDetailPage() {
                 value={adjustQty}
                 onChange={(e) => setAdjustQty(e.target.value)}
                 placeholder="Enter correct quantity"
-                className="w-full rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                className="w-full rounded-xl border border-border bg-accent-soft px-4 py-3 text-sm font-semibold outline-none focus:border-accent"
               />
               {delta !== null && delta !== 0 ? (
-                <p className="mt-2 text-xs font-semibold text-gray-500">
+                <p className="mt-2 text-xs font-semibold text-muted">
                   Adjustment: {delta > 0 ? '+' : ''}
                   {delta} units
                 </p>
               ) : null}
             </div>
           </PortalCard>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
         </div>
-        <div className="border-t border-violet-100 bg-white p-4">
+        <div className="border-t border-border bg-surface p-4">
           <button
             type="button"
             disabled={delta === null || delta === 0 || adjustMutation.isPending}
@@ -288,7 +288,7 @@ export function ProductDetailPage() {
               }
               adjustMutation.mutate(parsed.data)
             }}
-            className="w-full rounded-2xl bg-emerald-600 py-4 font-extrabold text-white disabled:opacity-40"
+            className="w-full rounded-2xl bg-success py-4 font-extrabold text-white disabled:opacity-40"
           >
             {adjustMutation.isPending ? 'Saving…' : 'Update Stock'}
           </button>
@@ -298,7 +298,7 @@ export function ProductDetailPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+    <div className="flex min-h-dvh flex-col">
       <PortalBackBar
         title="Product Details"
         subtitle={product.product_code}
@@ -309,16 +309,16 @@ export function ProductDetailPage() {
         <PortalCard>
           <div className="flex items-start gap-4 p-5">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
-              <Package className="h-7 w-7 text-emerald-600" aria-hidden />
+              <Package className="h-7 w-7 text-success" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
               {product.category ? (
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted">
                   {product.category}
                 </div>
               ) : null}
-              <div className="text-lg font-black text-gray-800">{product.name}</div>
-              <div className="mt-0.5 text-xs text-gray-400">{product.product_code}</div>
+              <div className="text-lg font-black text-foreground">{product.name}</div>
+              <div className="mt-0.5 text-xs text-muted">{product.product_code}</div>
             </div>
             <StatusPill level={level} />
           </div>
@@ -327,10 +327,10 @@ export function ProductDetailPage() {
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
           <div className="mb-2 flex items-center justify-between">
             <div>
-              <div className="text-xs font-semibold text-gray-500">Current Stock</div>
-              <div className="text-4xl font-black text-emerald-700">
+              <div className="text-xs font-semibold text-muted">Current Stock</div>
+              <div className="text-4xl font-black text-success">
                 {product.current_quantity}
-                <span className="ml-1 text-sm font-semibold text-gray-400">units</span>
+                <span className="ml-1 text-sm font-semibold text-muted">units</span>
               </div>
             </div>
           </div>
@@ -338,32 +338,32 @@ export function ProductDetailPage() {
         </div>
 
         <PortalCard title="Pricing">
-          <div className="grid grid-cols-2 divide-x divide-violet-50">
+          <div className="grid grid-cols-2 divide-x divide-border">
             <div className="p-4">
-              <div className="mb-1 text-xs font-semibold uppercase text-gray-400">
+              <div className="mb-1 text-xs font-semibold uppercase text-muted">
                 Wholesale
               </div>
-              <div className="text-xl font-black text-red-500">
+              <div className="text-xl font-black text-danger">
                 {formatMoney(product.wholesale_price)}
               </div>
             </div>
             <div className="p-4">
-              <div className="mb-1 text-xs font-semibold uppercase text-violet-500">
+              <div className="mb-1 text-xs font-semibold uppercase text-accent">
                 Retail
               </div>
-              <div className="text-xl font-black text-violet-700">
+              <div className="text-xl font-black text-accent">
                 {formatMoney(product.retail_price)}
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-between border-t border-violet-50 bg-emerald-50 p-4">
+          <div className="flex items-center justify-between border-t border-border bg-emerald-50 p-4">
             <div>
-              <div className="text-xs font-semibold text-gray-500">Profit per unit</div>
-              <div className="text-lg font-black text-emerald-700">
+              <div className="text-xs font-semibold text-muted">Profit per unit</div>
+              <div className="text-lg font-black text-success">
                 +{formatMoney(profit)}
               </div>
             </div>
-            <div className="rounded-xl bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-emerald-700">
+            <div className="rounded-xl bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-success">
               {marginPct}% margin
             </div>
           </div>
@@ -371,7 +371,7 @@ export function ProductDetailPage() {
 
         {product.description ? (
           <PortalCard title="Description">
-            <p className="p-4 text-sm text-gray-600">{product.description}</p>
+            <p className="p-4 text-sm text-muted">{product.description}</p>
           </PortalCard>
         ) : null}
 
@@ -394,12 +394,12 @@ export function ProductDetailPage() {
       </div>
 
       {canOperate ? (
-        <div className="space-y-2 border-t border-violet-100 bg-white p-4">
+        <div className="space-y-2 border-t border-border bg-surface p-4">
           {permissions.canAddInventory ? (
             <button
               type="button"
               onClick={() => setScreen('addStock')}
-              className="w-full rounded-2xl bg-emerald-600 py-3.5 font-extrabold text-white active:bg-emerald-700"
+              className="w-full rounded-2xl bg-success py-3.5 font-extrabold text-white active:bg-emerald-700"
             >
               + Add Stock
             </button>
@@ -409,7 +409,7 @@ export function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => setScreen('adjustStock')}
-                className="flex items-center justify-center gap-1 rounded-2xl border-2 border-gray-200 py-3 text-sm font-bold text-gray-600"
+                className="flex items-center justify-center gap-1 rounded-2xl border-2 border-border py-3 text-sm font-bold text-muted"
               >
                 <Pencil className="h-3.5 w-3.5" aria-hidden />
                 Fix Stock

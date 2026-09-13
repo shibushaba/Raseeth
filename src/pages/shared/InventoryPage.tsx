@@ -226,7 +226,7 @@ function InventoryAlerts({ products }: { products: Product[] }) {
 }
 
 export function InventoryPage() {
-  const { permissions, profile, signOut } = useAuth()
+  const { permissions } = useAuth()
   const [tab, setTab] = useState<InvTab>('dashboard')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string | null>(null)

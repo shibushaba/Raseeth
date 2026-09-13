@@ -9,10 +9,7 @@ import { useLocation } from 'react-router-dom'
 
 import { BottomNav } from '@/components/layout/BottomNav'
 import { useAuth } from '@/features/auth/AuthProvider'
-import {
-  GlobalSearchDialog,
-  GlobalSearchTrigger,
-} from '@/features/search/GlobalSearchDialog'
+import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
 import { SearchProvider } from '@/features/search/SearchContext'
 
 export function AppShell({ children }: { children: ReactNode }) {

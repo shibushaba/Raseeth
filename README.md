@@ -173,6 +173,12 @@ Local demo credentials used by validation scripts (E2E still uses email internal
 
 Legacy email accounts (same passwords): `owner@raseeth.demo`, `salesman@raseeth.demo`
 
+If tap-login shows “Could not sign in”, sync Auth passwords and profile phones (requires service role in `.env.local`):
+
+```bash
+node --env-file=.env.local scripts/ensure-demo-auth.mjs
+```
+
 Optional demo catalog (development only):
 
 ```sql

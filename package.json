@@ -11,7 +11,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:ui": "node scripts/ui-mobile-validation.mjs"
+    "test:ui": "node scripts/ui-mobile-validation.mjs",
+    "demo:ensure-auth": "node --env-file=.env.local scripts/ensure-demo-auth.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

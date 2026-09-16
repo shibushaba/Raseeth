@@ -36,7 +36,7 @@ export function SettingsPage() {
           className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-danger-soft py-4 text-sm font-extrabold text-danger transition-colors hover:bg-danger-soft"
         >
           <LogOut className="h-4 w-4" aria-hidden />
-          Sign out
+          Switch user
         </button>
       </div>
     </div>

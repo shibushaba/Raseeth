@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { MissingConfigScreen } from '@/components/MissingConfigScreen'
+import { PhoneShell } from '@/components/layout/PhoneShell'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { ThemeProvider } from '@/features/theme/ThemeProvider'
 import { isSupabaseConfigured } from '@/lib/supabase'
@@ -25,7 +26,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <AppRouter />
+          <PhoneShell>
+            <AppRouter />
+          </PhoneShell>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

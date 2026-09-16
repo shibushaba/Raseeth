@@ -1,5 +1,4 @@
 import {
-  Home,
   LayoutGrid,
   LineChart,
   Package,
@@ -21,7 +20,6 @@ type NavDef = {
 
 function salesmanNav(): NavDef[] {
   return [
-    { label: 'Home', to: '/home', icon: Home },
     {
       label: 'Sales',
       to: '/sales',
@@ -29,7 +27,7 @@ function salesmanNav(): NavDef[] {
       isActive: (p) => p === '/sales' || p.startsWith('/sales/'),
     },
     {
-      label: 'Inventory',
+      label: 'Stock',
       to: '/inventory',
       icon: Package,
       isActive: (p) => p === '/inventory' || p.startsWith('/inventory/'),
@@ -49,7 +47,7 @@ function salesmanNav(): NavDef[] {
 
 function ownerNav(): NavDef[] {
   return [
-    { label: 'Dashboard', to: '/overview', icon: LineChart },
+    { label: 'Overview', to: '/overview', icon: LineChart },
     {
       label: 'Sales',
       to: '/sales',
@@ -57,22 +55,12 @@ function ownerNav(): NavDef[] {
       isActive: (p) => p === '/sales' || p.startsWith('/sales/'),
     },
     {
-      label: 'Inventory',
+      label: 'Stock',
       to: '/inventory',
       icon: Package,
       isActive: (p) => p === '/inventory' || p.startsWith('/inventory/'),
     },
-    { label: 'Team', to: '/manage', icon: Users },
-    {
-      label: 'More',
-      to: '/more',
-      icon: LayoutGrid,
-      isActive: (p) =>
-        p.startsWith('/more') ||
-        p.startsWith('/activity') ||
-        p.startsWith('/messages') ||
-        p.startsWith('/settings'),
-    },
+    { label: 'Manage', to: '/manage', icon: Users },
   ]
 }
 
@@ -82,52 +70,35 @@ export function BottomNav({ role }: { role: UserRole }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-100 bg-white/95 backdrop-blur-md"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Main navigation"
     >
-      <div className="mx-auto max-w-lg px-3 pb-2">
-        <div className="flex items-stretch justify-around rounded-2xl border border-border/40 bg-surface/85 px-1 py-1 shadow-lg backdrop-blur-xl">
-          {items.map((item) => {
-            const Icon = item.icon
-            const active = item.isActive
-              ? item.isActive(location.pathname)
-              : location.pathname === item.to
+      <div className="mx-auto flex max-w-lg items-stretch justify-around px-1">
+        {items.map((item) => {
+          const Icon = item.icon
+          const active = item.isActive
+            ? item.isActive(location.pathname)
+            : location.pathname === item.to
 
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  'relative flex min-w-[48px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-2 transition-all duration-200',
-                  active
-                    ? 'text-accent'
-                    : 'text-muted hover:text-foreground',
-                )}
-              >
-                {active && (
-                  <span className="absolute inset-0 rounded-xl bg-accent-soft/60" />
-                )}
-                <Icon
-                  className={cn(
-                    'relative z-10 h-5 w-5 transition-transform',
-                    active && 'scale-110',
-                  )}
-                  strokeWidth={active ? 2.25 : 1.75}
-                  aria-hidden
-                />
-                <span
-                  className={cn(
-                    'relative z-10 text-[10px] leading-tight',
-                    active ? 'font-bold' : 'font-medium',
-                  )}
-                >
-                  {item.label}
-                </span>
-              </NavLink>
-            )
-          })}
-        </div>
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={cn(
+                'flex min-h-[52px] min-w-[64px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-bold transition-colors',
+                active ? 'text-violet-700' : 'font-semibold text-gray-400',
+              )}
+            >
+              <Icon
+                className="h-5 w-5"
+                strokeWidth={active ? 2.25 : 1.75}
+                aria-hidden
+              />
+              <span>{item.label}</span>
+            </NavLink>
+          )
+        })}
       </div>
     </nav>
   )

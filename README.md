@@ -118,7 +118,7 @@ npm install
 ### 2. Supabase project
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Apply **all** migrations in order (`20260326000001` → `20260326000013`), via SQL Editor or:
+2. Apply **all** migrations in order (`20260326000001` → `20260909085717`), via SQL Editor or:
 
    ```bash
    npx supabase link --project-ref YOUR_REF

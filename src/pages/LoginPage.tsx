@@ -1,135 +1,123 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { Store } from 'lucide-react'
+import {
+  LineChart,
+  Package,
+  ShoppingCart,
+  Store,
+} from 'lucide-react'
 
 import { useAuth } from '@/features/auth/AuthProvider'
+import { clearDemoEntryPath, consumeDemoEntryPath } from '@/lib/demo-entry'
+import { DEMO_PERSONAS, type DemoPersona } from '@/lib/demo-users'
 import { homePathFor } from '@/lib/roles'
-import { loginSchema } from '@/validation/schemas'
+import { cn } from '@/lib/utils'
+
+const PERSONA_ICONS = {
+  owner: LineChart,
+  cashier: ShoppingCart,
+  stock_manager: Package,
+} as const
+
+const TONE_STYLES = {
+  indigo: 'border-indigo-200 bg-indigo-50 hover:bg-indigo-100',
+  violet: 'border-violet-200 bg-violet-50 hover:bg-violet-100',
+  emerald: 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100',
+} as const
 
 export function LoginPage() {
-  const { signIn, session, role, loading } = useAuth()
+  const { signInAsDemo, session, role, loading } = useAuth()
   const location = useLocation()
-  const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [submitting, setSubmitting] = useState<DemoPersona | null>(null)
 
   if (!loading && session && role) {
     const from = (location.state as { from?: { pathname?: string } } | null)
       ?.from?.pathname
-    return <Navigate to={from ?? homePathFor(role)} replace />
+    const demoEntry = consumeDemoEntryPath()
+    return (
+      <Navigate to={from ?? demoEntry ?? homePathFor(role)} replace />
+    )
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
+  async function pick(persona: DemoPersona) {
     setError(null)
-
-    const parsed = loginSchema.safeParse({ phone, password })
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Invalid credentials')
-      return
-    }
-
-    setSubmitting(true)
+    setSubmitting(persona)
     try {
-      await signIn(parsed.data.phone, parsed.data.password)
+      await signInAsDemo(persona)
     } catch {
-      setError('Mobile number or password is incorrect.')
+      clearDemoEntryPath()
+      setError('Could not sign in. Check demo users in Supabase.')
     } finally {
-      setSubmitting(false)
+      setSubmitting(null)
     }
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <div className="bg-accent px-5 pb-10 pt-14 text-center text-white">
+    <div className="flex h-full min-h-0 flex-col bg-[#F5F3FF]">
+      <div className="bg-violet-600 px-5 pb-10 pt-14 text-center text-white">
         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
           <Store className="h-8 w-8" aria-hidden />
         </div>
         <h1 className="text-2xl font-black">Raseeth</h1>
         <p className="mt-1 text-sm font-medium opacity-70">
-          Smart Shop Management
+          Retail Management System
         </p>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-5">
-        <h2 className="mt-2 text-center text-lg font-extrabold text-foreground">
-          Sign In
+        <h2 className="mt-2 text-center text-lg font-extrabold text-gray-700">
+          Choose user
         </h2>
+        <p className="text-center text-xs font-medium text-gray-400">
+          Tap a role to start testing. Sign out anytime to switch.
+        </p>
 
         {error ? (
-          <div className="rounded-xl border border-danger-soft bg-danger-soft px-4 py-2.5 text-center text-sm font-semibold text-danger">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-center text-sm font-semibold text-red-600">
             {error}
           </div>
         ) : null}
 
-        <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>
-          <div>
-            <label
-              htmlFor="phone"
-              className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted"
-            >
-              Mobile number
-            </label>
-            <input
-              id="phone"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel"
-              placeholder="10-digit mobile number"
-              value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value)
-                setError(null)
-              }}
-              required
-              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground placeholder-muted outline-none transition-colors focus:border-accent"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Enter password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                setError(null)
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && void onSubmit(e as unknown as FormEvent)}
-              required
-              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground placeholder-muted outline-none transition-colors focus:border-accent"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-2xl bg-accent py-4 text-base font-extrabold text-white shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
-          >
-            {submitting ? 'Signing in…' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="space-y-1 rounded-2xl border border-border bg-accent-soft/40 p-4 text-xs text-muted">
-          <div className="mb-2 font-extrabold text-foreground">Demo accounts</div>
-          <div className="flex justify-between">
-            <span className="font-semibold">Owner</span>
-            <span>9876500001 · DemoOwner123!</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-semibold">Salesman</span>
-            <span>9876500002 · DemoSalesman123!</span>
-          </div>
+        <div className="space-y-3">
+          {DEMO_PERSONAS.map((persona) => {
+            const Icon = PERSONA_ICONS[persona.id]
+            const busy = submitting === persona.id
+            return (
+              <button
+                key={persona.id}
+                type="button"
+                disabled={Boolean(submitting)}
+                onClick={() => void pick(persona.id)}
+                className={cn(
+                  'flex w-full items-center gap-4 rounded-2xl border-2 p-4 text-left shadow-sm transition-colors active:scale-[0.99] disabled:opacity-60',
+                  TONE_STYLES[persona.tone],
+                )}
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                  <Icon className="h-6 w-6 text-gray-700" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-extrabold text-gray-800">
+                    {persona.title}
+                  </div>
+                  <div className="text-xs font-medium text-gray-500">
+                    {persona.subtitle}
+                  </div>
+                </div>
+                <span className="text-sm font-bold text-violet-700">
+                  {busy ? '…' : '→'}
+                </span>
+              </button>
+            )
+          })}
         </div>
+      </div>
+
+      <div className="p-4 text-center">
+        <p className="text-xs font-medium text-gray-300">
+          Shop POS UI · Demo mode
+        </p>
       </div>
     </div>
   )

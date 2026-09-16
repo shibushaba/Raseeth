@@ -10,6 +10,11 @@ import {
 import type { Session, User } from '@supabase/supabase-js'
 
 import { fetchProfile } from '@/data/api'
+import { setDemoEntryPath } from '@/lib/demo-entry'
+import {
+  demoPersonaById,
+  type DemoPersona,
+} from '@/lib/demo-users'
 import { permissionsFor, type Permissions } from '@/lib/roles'
 import { supabase } from '@/lib/supabase'
 import type { Profile, UserRole } from '@/types/database'
@@ -22,6 +27,7 @@ type AuthState = {
   permissions: Permissions
   loading: boolean
   signIn: (phone: string, password: string) => Promise<void>
+  signInAsDemo: (persona: DemoPersona) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -99,6 +105,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }, [])
 
+  const signInAsDemo = useCallback(async (persona: DemoPersona) => {
+    const config = demoPersonaById(persona)
+    setDemoEntryPath(config.entryPath)
+    await signIn(config.phone, config.password)
+  }, [signIn])
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
@@ -120,10 +132,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       permissions: permissionsFor(role),
       loading,
       signIn,
+      signInAsDemo,
       signOut,
       refreshProfile,
     }
-  }, [session, profile, loading, signIn, signOut, refreshProfile])
+  }, [session, profile, loading, signIn, signInAsDemo, signOut, refreshProfile])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

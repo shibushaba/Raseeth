@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { useAuth } from '@/features/auth/AuthProvider'
+import { consumeDemoEntryPath } from '@/lib/demo-entry'
 import { homePathFor } from '@/lib/roles'
 import { LoginPage } from '@/pages/LoginPage'
 import { OwnerManagePage } from '@/pages/owner/ManagePage'
@@ -34,7 +35,8 @@ function RootRedirect() {
   }
 
   if (!session || !role) return <Navigate to="/login" replace />
-  return <Navigate to={homePathFor(role)} replace />
+  const demoEntry = consumeDemoEntryPath()
+  return <Navigate to={demoEntry ?? homePathFor(role)} replace />
 }
 
 export function AppRouter() {

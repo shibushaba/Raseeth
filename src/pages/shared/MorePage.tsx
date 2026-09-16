@@ -103,7 +103,7 @@ export function MorePage() {
           onClick={() => void signOut()}
           className="w-full rounded-2xl border border-border bg-surface py-3 text-sm font-medium text-muted transition-colors hover:bg-accent-soft/30 hover:text-foreground"
         >
-          Sign out
+          Switch user
         </button>
       </div>
     </div>

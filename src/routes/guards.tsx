@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { AppShell } from '@/components/layout/AppShell'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { consumeDemoEntryPath } from '@/lib/demo-entry'
 import { homePathFor } from '@/lib/roles'
 import type { UserRole } from '@/types/database'
 
@@ -64,7 +65,8 @@ export function PublicOnlyRoute() {
   }
 
   if (session && role) {
-    return <Navigate to={homePathFor(role)} replace />
+    const demoEntry = consumeDemoEntryPath()
+    return <Navigate to={demoEntry ?? homePathFor(role)} replace />
   }
 
   return <Outlet />

@@ -1,19 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Package, Pencil } from 'lucide-react'
+import { ChevronDown, Package, Pencil, Trash2 } from 'lucide-react'
 
 import { PortalBackBar, PortalCard } from '@/components/ui/portal-field'
-import { addStock, adjustStock, getInventoryHistory, getProduct } from '@/data/api'
+import {
+  addStock,
+  adjustStock,
+  deleteProduct,
+  getInventoryHistory,
+  getProduct,
+} from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { EditProductForm } from '@/features/inventory/components/EditProductForm'
 import { MovementHistory } from '@/features/inventory/components/MovementHistory'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
 import { formatMoney, parseMoney } from '@/lib/money'
 import { getStockLevel } from '@/lib/stock'
 import { addStockSchema, adjustStockSchema } from '@/validation/schemas'
 
-type Screen = 'detail' | 'addStock' | 'adjustStock'
+type Screen = 'detail' | 'addStock' | 'adjustStock' | 'edit'
 
 function StatusPill({ level }: { level: ReturnType<typeof getStockLevel> }) {
   if (level === 'ok') {
@@ -63,6 +70,7 @@ export function ProductDetailPage() {
   const [addQty, setAddQty] = useState(0)
   const [adjustQty, setAdjustQty] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const productQuery = useQuery({
     queryKey: queryKeys.products.detail(productId),
@@ -73,7 +81,7 @@ export function ProductDetailPage() {
   const historyQuery = useQuery({
     queryKey: queryKeys.inventoryHistory.byProduct(productId),
     queryFn: () => getInventoryHistory(productId),
-    enabled: Boolean(productId),
+    enabled: Boolean(productId) && historyOpen,
   })
 
   const addMutation = useMutation({
@@ -87,6 +95,8 @@ export function ProductDetailPage() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.inventoryHistory.byProduct(productId),
         }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.inventory.summary }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.inventory.alerts }),
       ])
       setScreen('detail')
       setAddQty(0)
@@ -95,6 +105,29 @@ export function ProductDetailPage() {
     onError: (err) => {
       logTechnicalError('addStock', err)
       setError(toUserMessage(err, 'Unable to add stock.'))
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProduct(productId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.inventory.summary,
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.inventory.alerts,
+      })
+      navigate('/inventory')
+    },
+    onError: (err) => {
+      logTechnicalError('deleteProduct', err)
+      setError(
+        toUserMessage(
+          err,
+          'Unable to delete this product. It may have sales history.',
+        ),
+      )
     },
   })
 
@@ -109,6 +142,8 @@ export function ProductDetailPage() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.inventoryHistory.byProduct(productId),
         }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.inventory.summary }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.inventory.alerts }),
       ])
       setScreen('detail')
       setAdjustQty('')
@@ -147,7 +182,21 @@ export function ProductDetailPage() {
   const profit = retail - wholesale
   const marginPct = retail > 0 ? Math.round((profit / retail) * 100) : 0
   const canOperate =
-    permissions.canAddInventory || permissions.canAdjustInventory
+    permissions.canAddInventory ||
+    permissions.canAdjustInventory ||
+    permissions.canEditProduct ||
+    permissions.canDeleteProduct
+
+  if (screen === 'edit' && permissions.canEditProduct) {
+    return (
+      <div className="flex min-h-dvh flex-col">
+        <PortalBackBar title="Edit Product" onBack={() => setScreen('detail')} />
+        <div className="flex-1 overflow-y-auto">
+          <EditProductForm product={product} onDone={() => setScreen('detail')} />
+        </div>
+      </div>
+    )
+  }
 
   if (screen === 'addStock' && permissions.canAddInventory) {
     const newStock = product.current_quantity + addQty
@@ -338,6 +387,18 @@ export function ProductDetailPage() {
         </div>
 
         <PortalCard title="Pricing">
+          {permissions.canEditProduct ? (
+            <div className="flex justify-end border-b border-border px-4 py-2">
+              <button
+                type="button"
+                onClick={() => setScreen('edit')}
+                className="flex items-center gap-1 text-xs font-bold text-accent"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                Edit details
+              </button>
+            </div>
+          ) : null}
           <div className="grid grid-cols-2 divide-x divide-border">
             <div className="p-4">
               <div className="mb-1 text-xs font-semibold uppercase text-muted">
@@ -375,47 +436,112 @@ export function ProductDetailPage() {
           </PortalCard>
         ) : null}
 
-        <PortalCard title="Stock History">
-          <div className="p-4">
-            <MovementHistory
-              movements={historyQuery.data}
-              isLoading={historyQuery.isLoading}
-              errorMessage={
-                historyQuery.error
-                  ? toUserMessage(
-                      historyQuery.error,
-                      'Unable to load inventory history.',
-                    )
-                  : null
-              }
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+            aria-expanded={historyOpen}
+            aria-controls="product-stock-history"
+          >
+            <div>
+              <h3 className="text-sm font-extrabold text-foreground">
+                Stock History
+              </h3>
+              <p className="text-xs font-medium text-muted">
+                {historyOpen
+                  ? 'Tap to hide movements'
+                  : 'Tap to view purchases, sales & adjustments'}
+              </p>
+            </div>
+            <ChevronDown
+              className={`h-5 w-5 shrink-0 text-muted transition-transform ${historyOpen ? 'rotate-180' : ''}`}
+              aria-hidden
             />
-          </div>
-        </PortalCard>
+          </button>
+          {historyOpen ? (
+            <div
+              id="product-stock-history"
+              className="border-t border-border p-4"
+            >
+              <MovementHistory
+                movements={historyQuery.data}
+                isLoading={historyQuery.isLoading}
+                errorMessage={
+                  historyQuery.error
+                    ? toUserMessage(
+                        historyQuery.error,
+                        'Unable to load inventory history.',
+                      )
+                    : null
+                }
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {canOperate ? (
         <div className="space-y-2 border-t border-border bg-surface p-4">
+          {error ? (
+            <p className="text-center text-sm text-danger" role="alert">{error}</p>
+          ) : null}
           {permissions.canAddInventory ? (
             <button
               type="button"
-              onClick={() => setScreen('addStock')}
+              onClick={() => {
+                setError(null)
+                setScreen('addStock')
+              }}
               className="w-full rounded-2xl bg-success py-3.5 font-extrabold text-white active:bg-emerald-700"
             >
               + Add Stock
             </button>
           ) : null}
           <div className="grid grid-cols-2 gap-2">
+            {permissions.canEditProduct ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null)
+                  setScreen('edit')
+                }}
+                className="flex items-center justify-center gap-1.5 rounded-2xl border-2 border-accent bg-accent-soft/40 py-3 text-sm font-bold text-accent"
+              >
+                <Pencil className="h-4 w-4" aria-hidden />
+                Edit
+              </button>
+            ) : null}
             {permissions.canAdjustInventory ? (
               <button
                 type="button"
-                onClick={() => setScreen('adjustStock')}
-                className="flex items-center justify-center gap-1 rounded-2xl border-2 border-border py-3 text-sm font-bold text-muted"
+                onClick={() => {
+                  setError(null)
+                  setScreen('adjustStock')
+                }}
+                className="flex items-center justify-center gap-1.5 rounded-2xl border-2 border-border py-3 text-sm font-bold text-muted"
               >
-                <Pencil className="h-3.5 w-3.5" aria-hidden />
                 Fix Stock
               </button>
             ) : null}
           </div>
+          {permissions.canDeleteProduct ? (
+            <button
+              type="button"
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                setError(null)
+                const ok = window.confirm(
+                  `Delete "${product.name}"? This cannot be undone. Products with sales history cannot be deleted.`,
+                )
+                if (ok) deleteMutation.mutate()
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-danger/40 py-3 text-sm font-bold text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete product'}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

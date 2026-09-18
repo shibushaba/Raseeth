@@ -35,7 +35,8 @@
   --shadow-md: 0 4px 16px rgba(124, 58, 237, 0.08);
   --shadow-dialog: 0 12px 40px rgba(124, 58, 237, 0.12);
 
-  --bottom-nav-height: 5rem;
+  /* Matches BottomNav min-h (~52px); safe-area added in layout calcs */
+  --bottom-nav-height: 3.25rem;
 }
 
 @layer base {

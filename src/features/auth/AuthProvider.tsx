@@ -10,7 +10,7 @@ import {
 import type { Session, User } from '@supabase/supabase-js'
 
 import { fetchProfile } from '@/data/api'
-import { setDemoEntryPath } from '@/lib/demo-entry'
+import { clearDemoEntryPath, setDemoEntryPath } from '@/lib/demo-entry'
 import {
   demoPersonaById,
   type DemoPersona,
@@ -112,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [signIn])
 
   const signOut = useCallback(async () => {
+    clearDemoEntryPath()
     const { error } = await supabase.auth.signOut()
     if (error) throw error
     setProfile(null)

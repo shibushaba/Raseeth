@@ -1,4 +1,5 @@
-import { formatMoney } from '@/lib/money'
+import { formatMoney, toMoneyString } from '@/lib/money'
+import { LOW_STOCK_THRESHOLD } from '@/lib/stock'
 import type { BusinessPulse, BusinessSignal } from '@/lib/business-pulse'
 import {
   GLOBAL_SEARCH_LIMITS,
@@ -15,6 +16,7 @@ import type {
   CreateProductInput,
   CreateReturnInput,
   CreateSaleInput,
+  UpdateProductInput,
 } from '@/validation/schemas'
 import type {
   InventoryMovement,
@@ -105,13 +107,154 @@ export async function getTeamProfiles(): Promise<Profile[]> {
   return data ?? []
 }
 
+/** Shop salesmen for managers; all profiles for owners (RPC-scoped). */
+export async function listMyShopTeam(): Promise<Profile[]> {
+  const { data, error } = await supabase.rpc('list_my_shop_team')
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+export async function addShopSalesman(input: {
+  full_name: string
+  phone: string
+  password: string
+}): Promise<Profile> {
+  const { data, error } = await supabase.rpc('add_shop_salesman', {
+    p_full_name: input.full_name,
+    p_phone: input.phone,
+    p_password: input.password,
+  })
+  return assertData(data, error)
+}
+
+export type ShopSummary = {
+  id: string
+  name: string
+  manager_id: string | null
+  manager_name: string | null
+  worker_count: number
+  is_active: boolean
+  created_at: string
+}
+
+export async function getShops(): Promise<ShopSummary[]> {
+  const { data, error } = await supabase.rpc('list_shops')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    manager_id: row.manager_id,
+    manager_name: row.manager_name,
+    worker_count: Number(row.worker_count ?? 0),
+    is_active: row.is_active,
+    created_at: row.created_at,
+  }))
+}
+
+export async function createShop(name: string): Promise<void> {
+  const { error } = await supabase.rpc('create_shop', { p_name: name })
+  if (error) throw new Error(error.message)
+}
+
+export async function assignShopManager(
+  shopId: string,
+  managerId: string | null,
+): Promise<void> {
+  const { error } = await supabase.rpc('assign_shop_manager', {
+    p_shop_id: shopId,
+    p_manager_id: managerId,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export type MyShop = {
+  id: string
+  name: string
+  manager_id: string | null
+  manager_name: string | null
+}
+
+export async function getMyShop(): Promise<MyShop | null> {
+  const { data, error } = await supabase.rpc('get_my_shop')
+  if (error) throw new Error(error.message)
+  if (!data || typeof data !== 'object') return null
+  const raw = data as Record<string, unknown>
+  if (!raw.id) return null
+  return {
+    id: String(raw.id),
+    name: String(raw.name ?? 'Shop'),
+    manager_id: raw.manager_id ? String(raw.manager_id) : null,
+    manager_name: raw.manager_name ? String(raw.manager_name) : null,
+  }
+}
+
+export type OwnerShopRow = {
+  id: string
+  name: string
+  manager_id: string | null
+  manager_name: string | null
+  net_sales: number
+  sale_count: number
+}
+
+export type OwnerNetworkOverview = {
+  total_net_sales: number
+  total_sale_count: number
+  shop_count: number
+  attention_count: number
+  best_shop_id: string | null
+  best_shop_name: string | null
+  best_shop_net_sales: number
+  shops: OwnerShopRow[]
+}
+
+export async function getOwnerNetworkOverview(
+  rangeStart: Date,
+  rangeEnd: Date,
+): Promise<OwnerNetworkOverview> {
+  const { data, error } = await supabase.rpc('get_owner_network_overview', {
+    p_range_start: rangeStart.toISOString(),
+    p_range_end: rangeEnd.toISOString(),
+  })
+  if (error) throw new Error(error.message)
+  const raw = (data ?? {}) as Record<string, unknown>
+  const shops = Array.isArray(raw.shops) ? raw.shops : []
+  return {
+    total_net_sales: Number(raw.total_net_sales ?? 0),
+    total_sale_count: Number(raw.total_sale_count ?? 0),
+    shop_count: Number(raw.shop_count ?? 0),
+    attention_count: Number(raw.attention_count ?? 0),
+    best_shop_id: raw.best_shop_id ? String(raw.best_shop_id) : null,
+    best_shop_name: raw.best_shop_name ? String(raw.best_shop_name) : null,
+    best_shop_net_sales: Number(raw.best_shop_net_sales ?? 0),
+    shops: shops.map((row) => {
+      const r = row as Record<string, unknown>
+      return {
+        id: String(r.id),
+        name: String(r.name ?? 'Shop'),
+        manager_id: r.manager_id ? String(r.manager_id) : null,
+        manager_name: r.manager_name ? String(r.manager_name) : null,
+        net_sales: Number(r.net_sales ?? 0),
+        sale_count: Number(r.sale_count ?? 0),
+      }
+    }),
+  }
+}
+
 /** All products, optionally filtered by name or product_code. */
-export async function getProducts(search?: string): Promise<Product[]> {
+export async function getProducts(
+  search?: string,
+  shopId?: string | null,
+): Promise<Product[]> {
   let query = supabase
     .from('products')
     .select('*')
     .order('name', { ascending: true })
     .limit(100)
+
+  if (shopId) {
+    query = query.eq('shop_id', shopId)
+  }
 
   const term = search?.trim()
   if (term) {
@@ -462,25 +605,54 @@ export async function createReturn(
   return assertData(data, error)
 }
 
-export type MessageWithSender = Message & {
-  sender_name: string | null
-  sender_role: 'OWNER' | 'SALESMAN' | null
+export type MessageContact = {
+  id: string
+  full_name: string
+  role: UserRole
+  shop_name: string | null
 }
 
-export async function getMessages(): Promise<MessageWithSender[]> {
-  const { data, error } = await supabase
+export async function getMessageContacts(): Promise<MessageContact[]> {
+  const { data, error } = await supabase.rpc('get_message_contacts')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    full_name: row.full_name,
+    role: row.role as UserRole,
+    shop_name: row.shop_name,
+  }))
+}
+
+export type MessageWithSender = Message & {
+  sender_name: string | null
+  sender_role: UserRole | null
+}
+
+export async function getMessages(
+  peerUserId?: string,
+  currentUserId?: string,
+): Promise<MessageWithSender[]> {
+  let query = supabase
     .from('messages')
     .select('*, sender:profiles!messages_sender_id_fkey(full_name, role)')
     .order('created_at', { ascending: true })
     .limit(200)
+
+  if (peerUserId && currentUserId) {
+    query = query.or(
+      `and(sender_id.eq.${currentUserId},receiver_id.eq.${peerUserId}),and(sender_id.eq.${peerUserId},receiver_id.eq.${currentUserId})`,
+    )
+  }
+
+  const { data, error } = await query
 
   if (error) throw new Error(error.message)
 
   return (data ?? []).map((row) => {
     const { sender, ...message } = row as Message & {
       sender:
-        | { full_name: string; role: 'OWNER' | 'SALESMAN' }
-        | { full_name: string; role: 'OWNER' | 'SALESMAN' }[]
+        | { full_name: string; role: UserRole }
+        | { full_name: string; role: UserRole }[]
         | null
     }
     const s = Array.isArray(sender) ? sender[0] : sender
@@ -494,9 +666,11 @@ export async function getMessages(): Promise<MessageWithSender[]> {
 
 export async function sendMessage(input: {
   message: string
+  receiver_id?: string | null
 }): Promise<Message> {
   const { data, error } = await supabase.rpc('send_business_message', {
     p_message: input.message.trim(),
+    p_receiver_id: input.receiver_id ?? null,
   })
   return assertData(data, error)
 }
@@ -544,6 +718,25 @@ export type InventorySummary = {
   recent_adjustments: number
 }
 
+/** Products that are out of stock or at/below low-stock threshold (not limited to list cap). */
+export async function getStockAlertProducts(
+  shopId?: string | null,
+): Promise<Product[]> {
+  let query = supabase
+    .from('products')
+    .select('*')
+    .lte('current_quantity', LOW_STOCK_THRESHOLD)
+    .order('current_quantity', { ascending: true })
+    .limit(500)
+
+  if (shopId) {
+    query = query.eq('shop_id', shopId)
+  }
+
+  const { data, error } = await query
+  return assertData(data, error)
+}
+
 export async function getInventorySummary(): Promise<InventorySummary> {
   const { data, error } = await supabase.rpc('get_inventory_summary')
   if (error) throw new Error(error.message)
@@ -589,6 +782,31 @@ export async function getBusinessSummary(
   rangeEnd: Date,
 ): Promise<BusinessSummary> {
   const { data, error } = await supabase.rpc('get_business_summary', {
+    p_range_start: rangeStart.toISOString(),
+    p_range_end: rangeEnd.toISOString(),
+  })
+  if (error) throw new Error(error.message)
+  const raw = (data ?? {}) as Record<string, unknown>
+  return {
+    grossSales: Number(raw.gross_sales ?? 0),
+    returns: Number(raw.returns ?? 0),
+    netSales: Number(raw.net_sales ?? 0),
+    cogs: numOrNull(raw.cogs),
+    grossProfit: numOrNull(raw.gross_profit),
+    grossMargin: numOrNull(raw.gross_margin),
+    unitsSold: Number(raw.units_sold ?? 0),
+    costCoverage: Number(raw.cost_coverage ?? 0),
+    hasSales: Boolean(raw.has_sales),
+  }
+}
+
+export async function getShopBusinessSummary(
+  shopId: string,
+  rangeStart: Date,
+  rangeEnd: Date,
+): Promise<BusinessSummary> {
+  const { data, error } = await supabase.rpc('get_shop_business_summary', {
+    p_shop_id: shopId,
     p_range_start: rangeStart.toISOString(),
     p_range_end: rangeEnd.toISOString(),
   })
@@ -688,12 +906,21 @@ export async function getBusinessTrend(
   })
 }
 
-export async function getRecentSales(limit = 5): Promise<SaleWithSeller[]> {
-  const { data, error } = await supabase
+export async function getRecentSales(
+  limit = 5,
+  shopId?: string | null,
+): Promise<SaleWithSeller[]> {
+  let query = supabase
     .from('sales')
     .select('*, seller:profiles!sales_created_by_fkey(full_name)')
     .order('created_at', { ascending: false })
     .limit(limit)
+
+  if (shopId) {
+    query = query.eq('shop_id', shopId)
+  }
+
+  const { data, error } = await query
 
   if (error) throw new Error(error.message)
 
@@ -706,6 +933,34 @@ export async function getRecentSales(limit = 5): Promise<SaleWithSeller[]> {
       created_by_name: mapCreatorName(seller),
     }
   })
+}
+
+export async function updateProduct(
+  productId: string,
+  input: UpdateProductInput,
+): Promise<Product> {
+  const { data, error } = await supabase
+    .from('products')
+    .update({
+      name: input.name,
+      description: input.description?.trim() ? input.description.trim() : null,
+      category: input.category?.trim() ? input.category.trim() : null,
+      purchase_price: toMoneyString(input.purchase_price),
+      retail_price: toMoneyString(input.retail_price),
+      wholesale_price: toMoneyString(input.wholesale_price),
+    })
+    .eq('id', productId)
+    .select()
+    .single()
+
+  return assertData(data, error)
+}
+
+export async function deleteProduct(productId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_product', {
+    p_product_id: productId,
+  })
+  if (error) throw new Error(error.message)
 }
 
 /** Atomic product create via RPC (optional initial PURCHASE movement). */
@@ -740,6 +995,14 @@ export async function createSale(input: CreateSaleInput): Promise<Sale> {
       method: pay.method,
       amount: pay.amount,
     })),
+    p_adjustments: input.adjustments
+      ? {
+          discount_amount: input.adjustments.discount_amount ?? 0,
+          tax_amount: input.adjustments.tax_amount ?? 0,
+          other_charges: input.adjustments.other_charges ?? 0,
+          note: input.adjustments.note ?? null,
+        }
+      : null,
   })
   return assertData(data, error)
 }

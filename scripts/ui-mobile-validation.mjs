@@ -96,8 +96,8 @@ function fail(name, detail = '') {
 // --- Navigation mirrors ---
 {
   const roles = readFileSync(join(root, 'src/lib/roles.ts'), 'utf8')
-  const sectionNav = readFileSync(
-    join(root, 'src/components/layout/portal/SectionNav.tsx'),
+  const bottomNav = readFileSync(
+    join(root, 'src/components/layout/BottomNav.tsx'),
     'utf8',
   )
 
@@ -105,9 +105,13 @@ function fail(name, detail = '') {
     pass('Settings route in desktop nav')
   else fail('Settings route in desktop nav')
 
-  if (sectionNav.includes("to: '/sales'") && sectionNav.includes("to: '/inventory'"))
-    pass('Section nav includes Sales and Inventory')
-  else fail('Section nav includes Sales and Inventory')
+  if (bottomNav.includes("to: '/sales'") && bottomNav.includes("to: '/inventory'"))
+    pass('Bottom nav includes Sales and Inventory')
+  else fail('Bottom nav includes Sales and Inventory')
+
+  if (bottomNav.includes("to: '/more'"))
+    pass('Bottom nav includes More (logout path)')
+  else fail('Bottom nav includes More (logout path)')
 
   if (roles.includes("return role === 'OWNER' ? '/overview' : '/sales'"))
     pass('Salesman home routes to sales')

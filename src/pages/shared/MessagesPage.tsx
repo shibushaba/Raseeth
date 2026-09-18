@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageSquare, Send } from 'lucide-react'
 
 import { PortalBackBar } from '@/components/ui/portal-field'
 import {
+  getMessageContacts,
   getMessages,
   markMessagesRead,
   sendMessage,
-  type MessageWithSender,
 } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -16,10 +16,12 @@ import { formatTime } from '@/lib/datetime'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
 import { homePathFor } from '@/lib/roles'
 import { cn } from '@/lib/utils'
+import type { UserRole } from '@/types/database'
 import { messageSchema } from '@/validation/schemas'
 
-function roleLabel(role: MessageWithSender['sender_role']): string {
+function roleLabel(role: UserRole | null): string {
   if (role === 'OWNER') return 'Owner'
+  if (role === 'MANAGER') return 'Manager'
   if (role === 'SALESMAN') return 'Salesman'
   return 'User'
 }
@@ -31,10 +33,24 @@ export function MessagesPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [peerId, setPeerId] = useState<string | null>(null)
+
+  const contactsQuery = useQuery({
+    queryKey: ['messages', 'contacts'],
+    queryFn: getMessageContacts,
+  })
+
+  const contacts = contactsQuery.data ?? []
+
+  const activePeerId = useMemo(() => {
+    if (peerId) return peerId
+    return contacts[0]?.id ?? null
+  }, [peerId, contacts])
 
   const messagesQuery = useQuery({
-    queryKey: queryKeys.messages.thread,
-    queryFn: getMessages,
+    queryKey: [...queryKeys.messages.thread, activePeerId],
+    queryFn: () => getMessages(activePeerId ?? undefined, user?.id),
+    enabled: Boolean(user?.id) && (role === 'OWNER' || role === 'MANAGER' ? Boolean(activePeerId) : true),
   })
 
   useEffect(() => {
@@ -45,9 +61,6 @@ export function MessagesPage() {
         await queryClient.invalidateQueries({
           queryKey: queryKeys.messages.unreadCount,
         })
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.messages.thread,
-        })
       })
       .catch((err: unknown) => {
         logTechnicalError('markMessagesRead', err)
@@ -55,7 +68,7 @@ export function MessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [queryClient])
+  }, [queryClient, activePeerId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -90,8 +103,13 @@ export function MessagesPage() {
       setError(parsed.error.issues[0]?.message ?? 'Please enter a valid message.')
       return
     }
-    send.mutate(parsed.data)
+    send.mutate({
+      message: parsed.data.message,
+      receiver_id: activePeerId,
+    })
   }
+
+  const activeContact = contacts.find((c) => c.id === activePeerId)
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
@@ -99,6 +117,32 @@ export function MessagesPage() {
         title="Messages"
         onBack={() => navigate(role ? homePathFor(role) : '/')}
       />
+
+      {contacts.length > 1 ? (
+        <div className="flex gap-2 overflow-x-auto border-b border-border px-4 py-2">
+          {contacts.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setPeerId(c.id)}
+              className={cn(
+                'shrink-0 rounded-full px-3 py-1.5 text-xs font-bold',
+                c.id === activePeerId
+                  ? 'bg-accent text-white'
+                  : 'bg-accent-soft text-accent',
+              )}
+            >
+              {c.full_name}
+              {c.shop_name ? ` · ${c.shop_name}` : ''}
+            </button>
+          ))}
+        </div>
+      ) : activeContact ? (
+        <p className="border-b border-border px-4 py-2 text-xs font-semibold text-muted">
+          Chat with {activeContact.full_name}
+          {activeContact.shop_name ? ` (${activeContact.shop_name})` : ''}
+        </p>
+      ) : null}
 
       <div className="flex-1 overflow-y-auto p-4">
         {messagesQuery.isLoading ? (
@@ -146,7 +190,12 @@ export function MessagesPage() {
                     {formatTime(m.created_at)}
                   </p>
                 </div>
-                <p className={cn('whitespace-pre-wrap text-sm leading-relaxed', mine ? 'text-white' : 'text-foreground')}>
+                <p
+                  className={cn(
+                    'whitespace-pre-wrap text-sm leading-relaxed',
+                    mine ? 'text-white' : 'text-foreground',
+                  )}
+                >
                   {m.message}
                 </p>
               </div>

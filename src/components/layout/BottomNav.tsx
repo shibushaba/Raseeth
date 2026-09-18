@@ -3,6 +3,7 @@ import {
   LineChart,
   Package,
   ShoppingCart,
+  UserPlus,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -61,16 +62,65 @@ function ownerNav(): NavDef[] {
       isActive: (p) => p === '/inventory' || p.startsWith('/inventory/'),
     },
     { label: 'Manage', to: '/manage', icon: Users },
+    {
+      label: 'More',
+      to: '/more',
+      icon: LayoutGrid,
+      isActive: (p) =>
+        p.startsWith('/more') ||
+        p.startsWith('/activity') ||
+        p.startsWith('/messages') ||
+        p.startsWith('/settings'),
+    },
+  ]
+}
+
+function managerNav(): NavDef[] {
+  return [
+    { label: 'Overview', to: '/overview', icon: LineChart },
+    {
+      label: 'Sales',
+      to: '/sales',
+      icon: ShoppingCart,
+      isActive: (p) => p === '/sales' || p.startsWith('/sales/'),
+    },
+    {
+      label: 'Stock',
+      to: '/inventory',
+      icon: Package,
+      isActive: (p) => p === '/inventory' || p.startsWith('/inventory/'),
+    },
+    {
+      label: 'Team',
+      to: '/team',
+      icon: UserPlus,
+      isActive: (p) => p === '/team',
+    },
+    {
+      label: 'More',
+      to: '/more',
+      icon: LayoutGrid,
+      isActive: (p) =>
+        p.startsWith('/more') ||
+        p.startsWith('/activity') ||
+        p.startsWith('/messages') ||
+        p.startsWith('/settings'),
+    },
   ]
 }
 
 export function BottomNav({ role }: { role: UserRole }) {
   const location = useLocation()
-  const items = role === 'OWNER' ? ownerNav() : salesmanNav()
+  const items =
+    role === 'OWNER'
+      ? ownerNav()
+      : role === 'MANAGER'
+        ? managerNav()
+        : salesmanNav()
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-100 bg-white/95 backdrop-blur-md"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-violet-100 bg-white/95 backdrop-blur-md"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Main navigation"
     >

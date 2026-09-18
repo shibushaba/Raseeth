@@ -1,6 +1,6 @@
 /** Demo personas for tap-to-login testing (credentials stay server-side). */
 
-export type DemoPersona = 'owner' | 'cashier' | 'stock_manager'
+export type DemoPersona = 'owner' | 'cashier' | 'manager'
 
 export type DemoPersonaConfig = {
   id: DemoPersona
@@ -16,7 +16,7 @@ export const DEMO_PERSONAS: DemoPersonaConfig[] = [
   {
     id: 'owner',
     title: 'Owner',
-    subtitle: 'Dashboard, sales & profit',
+    subtitle: 'All shops, revenue & managers',
     phone: '9876500001',
     password: 'DemoOwner123!',
     entryPath: '/overview',
@@ -32,12 +32,12 @@ export const DEMO_PERSONAS: DemoPersonaConfig[] = [
     tone: 'violet',
   },
   {
-    id: 'stock_manager',
-    title: 'Stock Manager',
-    subtitle: 'Inventory & stock',
-    phone: '9876500002',
-    password: 'DemoSalesman123!',
-    entryPath: '/inventory',
+    id: 'manager',
+    title: 'Manager',
+    subtitle: 'Run your shop — sales, stock & trends',
+    phone: '9876500003',
+    password: 'DemoManager123!',
+    entryPath: '/overview',
     tone: 'emerald',
   },
 ]

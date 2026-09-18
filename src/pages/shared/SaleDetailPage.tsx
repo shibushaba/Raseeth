@@ -56,8 +56,8 @@ export function SaleDetailPage() {
   }, 0)
   const totalProfit = Number(sale.total_amount) - totalCost
 
-  function handlePrint() {
-    printSaleReceipt({
+  async function handlePrint() {
+    const ok = await printSaleReceipt({
       sale_number: sale.sale_number,
       created_at: sale.created_at,
       total_amount: Number(sale.total_amount),
@@ -73,7 +73,22 @@ export function SaleDetailPage() {
         amount: Number(p.amount),
       })),
       sold_by: sale.created_by_name,
+      pricing:
+        Number(sale.discount_amount) > 0 ||
+        Number(sale.tax_amount) > 0 ||
+        Number(sale.other_charges) > 0
+          ? {
+              subtotal: Number(sale.subtotal_amount ?? sale.total_amount),
+              discount: Number(sale.discount_amount),
+              tax: Number(sale.tax_amount),
+              other: Number(sale.other_charges),
+              note: sale.adjustment_note,
+            }
+          : undefined,
     })
+    if (!ok) {
+      window.alert('Unable to download receipt PDF. Please try again.')
+    }
   }
 
   return (
@@ -86,8 +101,41 @@ export function SaleDetailPage() {
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         <div className="rounded-2xl bg-accent p-4 text-white shadow-md">
+          {Number(sale.discount_amount) > 0 ||
+          Number(sale.tax_amount) > 0 ||
+          Number(sale.other_charges) > 0 ? (
+            <div className="mb-3 space-y-1 text-sm opacity-90">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>
+                  {formatMoney(sale.subtotal_amount ?? sale.total_amount)}
+                </span>
+              </div>
+              {Number(sale.discount_amount) > 0 ? (
+                <div className="flex justify-between text-emerald-100">
+                  <span>Discount</span>
+                  <span>−{formatMoney(sale.discount_amount)}</span>
+                </div>
+              ) : null}
+              {Number(sale.tax_amount) > 0 ? (
+                <div className="flex justify-between">
+                  <span>GST / tax</span>
+                  <span>+{formatMoney(sale.tax_amount)}</span>
+                </div>
+              ) : null}
+              {Number(sale.other_charges) > 0 ? (
+                <div className="flex justify-between">
+                  <span>Other</span>
+                  <span>+{formatMoney(sale.other_charges)}</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="text-xs font-semibold opacity-70">Total</div>
           <div className="text-3xl font-black">{formatMoney(sale.total_amount)}</div>
+          {sale.adjustment_note ? (
+            <div className="mt-2 text-xs opacity-80">{sale.adjustment_note}</div>
+          ) : null}
           <div className="mt-1 text-xs opacity-70">
             {formatDateTime(sale.created_at)}
             {sale.created_by_name ? ` · ${sale.created_by_name}` : ''}
@@ -204,7 +252,7 @@ export function SaleDetailPage() {
       <div className="space-y-2 border-t border-border bg-surface p-4">
         <button
           type="button"
-          onClick={handlePrint}
+          onClick={() => void handlePrint()}
           className="w-full rounded-2xl border-2 border-accent py-3.5 text-sm font-extrabold text-accent transition-colors hover:bg-accent-soft/30"
         >
           Print Receipt

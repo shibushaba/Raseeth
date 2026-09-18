@@ -5,19 +5,29 @@ import {
   AlertTriangle,
   ArrowRight,
   Ban,
+  Layers,
   Package,
+  Plus,
+  TrendingUp,
   Wallet,
 } from 'lucide-react'
 
 import { PortalTabs } from '@/components/layout/portal/PortalTabs'
-import { getInventorySummary, getProducts } from '@/data/api'
+import {
+  getInventorySummary,
+  getProducts,
+  getStockAlertProducts,
+} from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { useShopScope } from '@/features/shop/useShopScope'
 import { InventoryProductList } from '@/features/inventory/components/InventoryProductList'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
 import { formatMoney, parseMoney } from '@/lib/money'
 import { uniqueCategories } from '@/lib/product-categories'
 import { getStockLevel } from '@/lib/stock'
+import type { InventorySummary } from '@/data/api'
+import type { Permissions } from '@/lib/roles'
 import type { Product } from '@/types/database'
 
 type InvTab = 'dashboard' | 'products' | 'alerts'
@@ -42,121 +52,379 @@ function StockBar({ stock }: { stock: number }) {
   )
 }
 
-function InventoryDashboard({
-  products,
-  onGoAlerts,
+function formatStockValue(totalValue: number): string {
+  if (totalValue >= 100000) return `₹${(totalValue / 100000).toFixed(2)}L`
+  if (totalValue >= 1000) return `₹${(totalValue / 1000).toFixed(1)}k`
+  return formatMoney(totalValue)
+}
+
+function InventoryQuickActions({
+  permissions,
+  onBrowseProducts,
+  onViewAlerts,
 }: {
-  products: Product[]
-  onGoAlerts: () => void
+  permissions: Permissions
+  onBrowseProducts: () => void
+  onViewAlerts: () => void
 }) {
-  const outOfStock = products.filter((p) => p.current_quantity === 0)
-  const lowStock = products.filter(
-    (p) => p.current_quantity > 0 && getStockLevel(p.current_quantity) === 'low',
-  )
-  const totalValue = products.reduce(
-    (s, p) => s + parseMoney(p.avg_unit_cost) * p.current_quantity,
-    0,
-  )
-  const valueLabel =
-    totalValue >= 100000
-      ? `₹${(totalValue / 100000).toFixed(2)}L`
-      : totalValue >= 1000
-        ? `₹${(totalValue / 1000).toFixed(1)}k`
-        : formatMoney(totalValue)
-
-  const cards = [
-    { label: 'Products', value: products.length, color: 'bg-accent', icon: Package },
-    { label: 'Stock Value', value: valueLabel, color: 'bg-success', icon: Wallet },
-    { label: 'Low Stock', value: lowStock.length, color: 'bg-warning', icon: AlertTriangle },
-    { label: 'Out of Stock', value: outOfStock.length, color: 'bg-danger', icon: Ban },
-  ]
-
   return (
-    <div className="space-y-4 overflow-y-auto p-4">
-      <div className="grid grid-cols-2 gap-3">
-        {cards.map((card) => {
-          const Icon = card.icon
-          return (
-            <div key={card.label} className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-              <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${card.color} text-white`}>
-                <Icon className="h-4 w-4" aria-hidden />
-              </div>
-              <div className="text-2xl font-black text-foreground">{card.value}</div>
-              <div className="mt-0.5 text-xs font-semibold text-muted">{card.label}</div>
-            </div>
-          )
-        })}
-      </div>
-
-      {products.length === 0 ? (
-        <div className="rounded-2xl border border-border bg-accent-soft/40 p-6 text-center">
-          <Package className="mx-auto mb-2 h-8 w-8 text-accent" />
-          <p className="font-bold text-foreground">No products yet</p>
-          <p className="mt-1 text-xs text-muted">
-            Go to Products tab to add your first product
-          </p>
-        </div>
-      ) : null}
-
-      {outOfStock.length > 0 ? (
-        <div>
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-danger">
-            Out of Stock
-          </p>
-          {outOfStock.slice(0, 3).map((p) => (
-            <div
-              key={p.id}
-              className="mb-2 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-3"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-bold text-foreground">{p.name}</div>
-                <div className="text-xs font-semibold text-danger">
-                  Stock: 0 · {p.product_code}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {lowStock.length > 0 ? (
-        <div>
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-warning">
-            Low Stock
-          </p>
-          {lowStock.slice(0, 3).map((p) => (
-            <div
-              key={p.id}
-              className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 p-3"
-            >
-              <div className="text-sm font-bold text-foreground">{p.name}</div>
-              <div className="text-xs font-semibold text-warning">
-                Stock: {p.current_quantity}
-              </div>
-              <StockBar stock={p.current_quantity} />
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {(outOfStock.length > 0 || lowStock.length > 0) && (
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <button
+        type="button"
+        onClick={onBrowseProducts}
+        className="rounded-2xl border-2 border-emerald-500 bg-surface py-3.5 text-sm font-extrabold text-emerald-600"
+      >
+        Browse products
+      </button>
+      {permissions.canCreateProduct ? (
+        <Link
+          to="/inventory/new"
+          className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3.5 text-sm font-extrabold text-white shadow-md"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          Add product
+        </Link>
+      ) : (
         <button
           type="button"
-          onClick={onGoAlerts}
-          className="w-full rounded-2xl border-2 border-accent py-3 text-sm font-bold text-accent transition-colors hover:bg-accent-soft/30"
+          onClick={onViewAlerts}
+          className="rounded-2xl bg-emerald-500 py-3.5 text-sm font-extrabold text-white shadow-md"
         >
-          View All Alerts
+          View alerts
         </button>
       )}
     </div>
   )
 }
 
-function InventoryAlerts({ products }: { products: Product[] }) {
+function InventoryDashboard({
+  products,
+  summary,
+  onGoAlerts,
+}: {
+  products: Product[]
+  summary: InventorySummary | undefined
+  onGoAlerts: () => void
+}) {
   const outOfStock = products.filter((p) => p.current_quantity === 0)
   const lowStock = products.filter(
     (p) => p.current_quantity > 0 && getStockLevel(p.current_quantity) === 'low',
   )
+  const healthyStock = products.filter(
+    (p) => p.current_quantity > 0 && getStockLevel(p.current_quantity) !== 'low',
+  )
+  const totalUnits = products.reduce((s, p) => s + p.current_quantity, 0)
+  const totalValue = products.reduce(
+    (s, p) => s + parseMoney(p.avg_unit_cost) * p.current_quantity,
+    0,
+  )
+
+  const categoryRows = useMemo(() => {
+    const map = new Map<
+      string,
+      { count: number; units: number; value: number }
+    >()
+    for (const p of products) {
+      const cat = p.category?.trim() || 'Uncategorized'
+      const row = map.get(cat) ?? { count: 0, units: 0, value: 0 }
+      row.count += 1
+      row.units += p.current_quantity
+      row.value += parseMoney(p.avg_unit_cost) * p.current_quantity
+      map.set(cat, row)
+    }
+    return [...map.entries()]
+      .sort((a, b) => b[1].value - a[1].value)
+      .slice(0, 6)
+  }, [products])
+
+  const topByUnits = useMemo(
+    () =>
+      [...products]
+        .sort((a, b) => b.current_quantity - a.current_quantity)
+        .slice(0, 5),
+    [products],
+  )
+
+  const attention = [...outOfStock, ...lowStock].slice(0, 5)
+  const stockTotal = Math.max(
+    1,
+    healthyStock.length + lowStock.length + outOfStock.length,
+  )
+
+  const cards = [
+    {
+      label: 'SKUs',
+      value: products.length,
+      hint: 'Active products',
+      color: 'bg-violet-500',
+      icon: Package,
+    },
+    {
+      label: 'Units on hand',
+      value: totalUnits.toLocaleString('en-IN'),
+      hint: 'Total quantity',
+      color: 'bg-emerald-500',
+      icon: Layers,
+    },
+    {
+      label: 'Low stock',
+      value: summary?.low_stock ?? lowStock.length,
+      hint: 'Needs reorder',
+      color: 'bg-amber-500',
+      icon: AlertTriangle,
+    },
+    {
+      label: 'Out of stock',
+      value: summary?.out_of_stock ?? outOfStock.length,
+      hint: 'Restock now',
+      color: 'bg-red-500',
+      icon: Ban,
+    },
+  ]
+
+  return (
+    <div className="flex-1 space-y-5 overflow-y-auto px-4 pb-6 pt-2">
+      <div className="rounded-3xl bg-gradient-to-br from-emerald-600 to-emerald-500 p-5 text-white shadow-lg">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider opacity-80">
+              Inventory value (WAC)
+            </p>
+            <p className="mt-1 text-4xl font-black tabular-nums">
+              {formatStockValue(totalValue)}
+            </p>
+            <p className="mt-2 text-sm font-medium opacity-90">
+              {formatMoney(totalValue)} at average cost
+            </p>
+          </div>
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+            <Wallet className="h-7 w-7" aria-hidden />
+          </div>
+        </div>
+        {summary?.recent_adjustments ? (
+          <p className="mt-4 rounded-xl bg-white/15 px-3 py-2 text-xs font-semibold">
+            {summary.recent_adjustments} stock adjustment
+            {summary.recent_adjustments === 1 ? '' : 's'} in the last 7 days
+          </p>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {cards.map((card) => {
+          const Icon = card.icon
+          return (
+            <div
+              key={card.label}
+              className="rounded-2xl border border-border bg-surface p-4 shadow-sm"
+            >
+              <div
+                className={`mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl ${card.color} text-white shadow-sm`}
+              >
+                <Icon className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="text-3xl font-black tabular-nums text-foreground">
+                {card.value}
+              </div>
+              <div className="mt-1 text-sm font-bold text-foreground">
+                {card.label}
+              </div>
+              <div className="text-[11px] font-medium text-muted">{card.hint}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {products.length > 0 ? (
+        <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+          <h2 className="text-sm font-extrabold text-foreground">Stock health</h2>
+          <p className="mt-0.5 text-xs text-muted">How your catalog is distributed</p>
+          <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-background">
+            <div
+              className="bg-emerald-500 transition-all"
+              style={{ width: `${(healthyStock.length / stockTotal) * 100}%` }}
+              title="Healthy"
+            />
+            <div
+              className="bg-amber-400 transition-all"
+              style={{ width: `${(lowStock.length / stockTotal) * 100}%` }}
+              title="Low"
+            />
+            <div
+              className="bg-red-400 transition-all"
+              style={{ width: `${(outOfStock.length / stockTotal) * 100}%` }}
+              title="Out"
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] font-bold">
+            <div>
+              <span className="text-emerald-600">{healthyStock.length}</span>
+              <span className="block font-medium text-muted">Healthy</span>
+            </div>
+            <div>
+              <span className="text-amber-600">{lowStock.length}</span>
+              <span className="block font-medium text-muted">Low</span>
+            </div>
+            <div>
+              <span className="text-red-600">{outOfStock.length}</span>
+              <span className="block font-medium text-muted">Out</span>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {categoryRows.length > 0 ? (
+        <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-extrabold text-foreground">By category</h2>
+            <TrendingUp className="h-4 w-4 text-muted" aria-hidden />
+          </div>
+          <ul className="mt-3 space-y-2">
+            {categoryRows.map(([name, row]) => (
+              <li
+                key={name}
+                className="flex items-center justify-between gap-3 rounded-xl bg-background px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-foreground">
+                    {name}
+                  </p>
+                  <p className="text-[11px] font-medium text-muted">
+                    {row.count} products · {row.units} units
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-extrabold text-emerald-600">
+                  {formatStockValue(row.value)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {topByUnits.length > 0 ? (
+        <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+          <h2 className="text-sm font-extrabold text-foreground">Top stock</h2>
+          <p className="mt-0.5 text-xs text-muted">Highest quantity on hand</p>
+          <ul className="mt-3 space-y-2">
+            {topByUnits.map((p, i) => (
+              <li key={p.id}>
+                <Link
+                  to={`/inventory/${p.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-3 py-3 transition-colors hover:border-emerald-200 hover:bg-emerald-50/50"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-xs font-black text-emerald-700">
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-foreground">
+                      {p.name}
+                    </p>
+                    <p className="text-[11px] text-muted">{p.product_code}</p>
+                  </div>
+                  <span className="text-lg font-black text-foreground tabular-nums">
+                    {p.current_quantity}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {attention.length > 0 ? (
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-extrabold text-foreground">
+              Needs attention
+            </h2>
+            <button
+              type="button"
+              onClick={onGoAlerts}
+              className="text-xs font-bold text-emerald-600"
+            >
+              See all
+            </button>
+          </div>
+          <ul className="space-y-2">
+            {attention.map((p) => {
+              const isOut = p.current_quantity === 0
+              return (
+                <li key={p.id}>
+                  <Link
+                    to={`/inventory/${p.id}`}
+                    className={`flex items-center justify-between gap-3 rounded-2xl border p-3 ${
+                      isOut
+                        ? 'border-red-200 bg-red-50'
+                        : 'border-amber-200 bg-amber-50'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-foreground">
+                        {p.name}
+                      </p>
+                      <p
+                        className={`text-xs font-semibold ${isOut ? 'text-danger' : 'text-warning'}`}
+                      >
+                        {isOut ? 'Out of stock' : `Only ${p.current_quantity} left`}
+                      </p>
+                      {!isOut ? <StockBar stock={p.current_quantity} /> : null}
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted" />
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ) : products.length > 0 ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center">
+          <Package className="mx-auto mb-2 h-10 w-10 text-emerald-600" />
+          <p className="font-bold text-emerald-800">All stock levels look good</p>
+        </div>
+      ) : null}
+
+      {products.length === 0 ? (
+        <div className="rounded-2xl border border-border bg-accent-soft/40 p-8 text-center">
+          <Package className="mx-auto mb-3 h-12 w-12 text-accent" />
+          <p className="text-lg font-bold text-foreground">No products yet</p>
+          <p className="mt-2 text-sm text-muted">
+            Add products to see value, categories, and alerts here.
+          </p>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function InventoryAlerts({
+  products,
+  isLoading,
+  errorMessage,
+}: {
+  products: Product[]
+  isLoading: boolean
+  errorMessage: string | null
+}) {
+  const outOfStock = products.filter((p) => p.current_quantity === 0)
+  const lowStock = products.filter(
+    (p) => p.current_quantity > 0 && getStockLevel(p.current_quantity) === 'low',
+  )
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3 p-4" aria-busy="true">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-16 animate-pulse rounded-2xl bg-accent-soft" />
+        ))}
+      </div>
+    )
+  }
+
+  if (errorMessage) {
+    return (
+      <p className="p-4 text-sm text-danger" role="alert">{errorMessage}</p>
+    )
+  }
 
   if (outOfStock.length === 0 && lowStock.length === 0) {
     return (
@@ -227,19 +495,25 @@ function InventoryAlerts({ products }: { products: Product[] }) {
 
 export function InventoryPage() {
   const { permissions } = useAuth()
+  const { shopId } = useShopScope()
   const [tab, setTab] = useState<InvTab>('dashboard')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string | null>(null)
   const deferredSearch = useDeferredValue(search.trim())
 
   const productsQuery = useQuery({
-    queryKey: queryKeys.products.list(deferredSearch),
-    queryFn: () => getProducts(deferredSearch),
+    queryKey: [...queryKeys.products.list(deferredSearch), shopId ?? 'all'],
+    queryFn: () => getProducts(deferredSearch, shopId),
   })
 
   const summaryQuery = useQuery({
     queryKey: queryKeys.inventory.summary,
     queryFn: getInventorySummary,
+  })
+
+  const alertsQuery = useQuery({
+    queryKey: [...queryKeys.inventory.alerts, shopId ?? 'all'],
+    queryFn: () => getStockAlertProducts(shopId),
   })
 
   const errorMessage = useMemo(() => {
@@ -267,12 +541,20 @@ export function InventoryPage() {
     return list
   }, [products, category])
 
-  const alertCount =
-    (summaryQuery.data?.low_stock ?? 0) +
-    (summaryQuery.data?.out_of_stock ?? 0)
+  const alertProducts = alertsQuery.data ?? []
+  const alertCount = alertProducts.length
+
+  const alertsErrorMessage = useMemo(() => {
+    if (!alertsQuery.error) return null
+    logTechnicalError('getStockAlertProducts', alertsQuery.error)
+    return toUserMessage(
+      alertsQuery.error,
+      'Unable to load stock alerts.',
+    )
+  }, [alertsQuery.error])
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="px-4 pb-2 pt-6">
         <h1 className="text-2xl font-black text-foreground">Inventory</h1>
         {tab === 'products' ? (
@@ -285,8 +567,17 @@ export function InventoryPage() {
               className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-foreground placeholder-muted outline-none transition-colors focus:border-accent"
             />
           </div>
+        ) : tab === 'dashboard' ? (
+          <>
+            <p className="mt-1 text-sm text-muted">Manage your stock</p>
+            <InventoryQuickActions
+              permissions={permissions}
+              onBrowseProducts={() => setTab('products')}
+              onViewAlerts={() => setTab('alerts')}
+            />
+          </>
         ) : (
-          <p className="text-sm text-muted">Manage your stock</p>
+          <p className="mt-1 text-sm text-muted">Manage your stock</p>
         )}
       </div>
 
@@ -304,6 +595,7 @@ export function InventoryPage() {
       {tab === 'dashboard' ? (
         <InventoryDashboard
           products={products}
+          summary={summaryQuery.data}
           onGoAlerts={() => setTab('alerts')}
         />
       ) : null}
@@ -365,7 +657,13 @@ export function InventoryPage() {
         </div>
       ) : null}
 
-      {tab === 'alerts' ? <InventoryAlerts products={products} /> : null}
+      {tab === 'alerts' ? (
+        <InventoryAlerts
+          products={alertProducts}
+          isLoading={alertsQuery.isLoading}
+          errorMessage={alertsErrorMessage}
+        />
+      ) : null}
     </div>
   )
 }

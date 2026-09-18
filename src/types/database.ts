@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'OWNER' | 'SALESMAN'
+export type UserRole = 'OWNER' | 'SALESMAN' | 'MANAGER'
 export type MovementType = 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN'
 export type PriceType = 'RETAIL' | 'WHOLESALE' | 'CUSTOM'
 export type PaymentMethod = 'CASH' | 'UPI' | 'CARD'
@@ -54,6 +54,7 @@ export interface Database {
           retail_price: string
           wholesale_price: string
           current_quantity: number
+          shop_id: string | null
           created_by: string
           created_at: string
           updated_at: string
@@ -69,6 +70,7 @@ export interface Database {
           retail_price: string | number
           wholesale_price: string | number
           current_quantity?: number
+          shop_id?: string | null
           created_by: string
           created_at?: string
           updated_at?: string
@@ -84,6 +86,7 @@ export interface Database {
           retail_price?: string | number
           wholesale_price?: string | number
           current_quantity?: number
+          shop_id?: string | null
           created_by?: string
           created_at?: string
           updated_at?: string
@@ -154,6 +157,12 @@ export interface Database {
           id: string
           sale_number: string
           total_amount: string
+          subtotal_amount: string | null
+          discount_amount: string
+          tax_amount: string
+          other_charges: string
+          adjustment_note: string | null
+          shop_id: string | null
           created_by: string
           created_at: string
         }
@@ -161,6 +170,12 @@ export interface Database {
           id?: string
           sale_number?: string
           total_amount: string | number
+          subtotal_amount?: string | number | null
+          discount_amount?: string | number
+          tax_amount?: string | number
+          other_charges?: string | number
+          adjustment_note?: string | null
+          shop_id?: string | null
           created_by: string
           created_at?: string
         }
@@ -168,6 +183,12 @@ export interface Database {
           id?: string
           sale_number?: string
           total_amount?: string | number
+          subtotal_amount?: string | number | null
+          discount_amount?: string | number
+          tax_amount?: string | number
+          other_charges?: string | number
+          adjustment_note?: string | null
+          shop_id?: string | null
           created_by?: string
           created_at?: string
         }
@@ -418,6 +439,84 @@ export interface Database {
           },
         ]
       }
+      shops: {
+        Row: {
+          id: string
+          name: string
+          manager_id: string | null
+          is_active: boolean
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          manager_id?: string | null
+          is_active?: boolean
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          manager_id?: string | null
+          is_active?: boolean
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'shops_manager_id_fkey'
+            columns: ['manager_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'shops_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      shop_members: {
+        Row: {
+          shop_id: string
+          profile_id: string
+          created_at: string
+        }
+        Insert: {
+          shop_id: string
+          profile_id: string
+          created_at?: string
+        }
+        Update: {
+          shop_id?: string
+          profile_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'shop_members_shop_id_fkey'
+            columns: ['shop_id']
+            isOneToOne: false
+            referencedRelation: 'shops'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'shop_members_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       messages: {
         Row: {
           id: string
@@ -481,10 +580,15 @@ export interface Database {
         }
         Returns: Database['public']['Tables']['products']['Row']
       }
+      delete_product: {
+        Args: { p_product_id: string }
+        Returns: undefined
+      }
       create_sale: {
         Args: {
           p_items: Json
           p_payments: Json
+          p_adjustments?: Json | null
         }
         Returns: Database['public']['Tables']['sales']['Row']
       }
@@ -567,8 +671,34 @@ export interface Database {
       send_business_message: {
         Args: {
           p_message: string
+          p_receiver_id?: string | null
         }
         Returns: Database['public']['Tables']['messages']['Row']
+      }
+      get_message_contacts: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          full_name: string
+          role: UserRole
+          shop_name: string | null
+        }[]
+      }
+      get_owner_network_overview: {
+        Args: { p_range_start: string; p_range_end: string }
+        Returns: Json
+      }
+      get_shop_business_summary: {
+        Args: {
+          p_shop_id: string
+          p_range_start: string
+          p_range_end: string
+        }
+        Returns: Json
+      }
+      get_my_shop: {
+        Args: Record<string, never>
+        Returns: Json
       }
       current_user_role: {
         Args: Record<string, never>
@@ -585,6 +715,38 @@ export interface Database {
       is_staff: {
         Args: Record<string, never>
         Returns: boolean
+      }
+      list_shops: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          name: string
+          manager_id: string | null
+          manager_name: string | null
+          worker_count: number
+          is_active: boolean
+          created_at: string
+        }[]
+      }
+      create_shop: {
+        Args: { p_name: string }
+        Returns: Database['public']['Tables']['shops']['Row']
+      }
+      assign_shop_manager: {
+        Args: { p_shop_id: string; p_manager_id: string | null }
+        Returns: Database['public']['Tables']['shops']['Row']
+      }
+      list_my_shop_team: {
+        Args: Record<string, never>
+        Returns: Database['public']['Tables']['profiles']['Row'][]
+      }
+      add_shop_salesman: {
+        Args: {
+          p_full_name: string
+          p_phone: string
+          p_password: string
+        }
+        Returns: Database['public']['Tables']['profiles']['Row']
       }
     }
     Enums: {

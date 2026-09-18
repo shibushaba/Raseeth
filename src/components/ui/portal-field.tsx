@@ -23,6 +23,7 @@ export function PortalField({
 
 export function PortalTextInput({
   value,
+  defaultValue,
   onChange,
   placeholder,
   type = 'text',
@@ -34,6 +35,7 @@ export function PortalTextInput({
   step,
 }: {
   value?: string
+  defaultValue?: string
   onChange?: (v: string) => void
   placeholder?: string
   type?: string
@@ -53,6 +55,7 @@ export function PortalTextInput({
       min={min}
       step={step}
       value={value}
+      defaultValue={value === undefined ? defaultValue : undefined}
       onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       placeholder={placeholder}
       required={required}
@@ -63,6 +66,7 @@ export function PortalTextInput({
 
 export function PortalPriceInput({
   value,
+  defaultValue,
   onChange,
   placeholder,
   id,
@@ -70,6 +74,7 @@ export function PortalPriceInput({
   required,
 }: {
   value?: string
+  defaultValue?: string
   onChange?: (v: string) => void
   placeholder?: string
   id?: string
@@ -89,6 +94,7 @@ export function PortalPriceInput({
         min={0}
         step="0.01"
         value={value}
+        defaultValue={value === undefined ? defaultValue : undefined}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         placeholder={placeholder}
         required={required}

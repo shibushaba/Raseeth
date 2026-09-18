@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import {
   LineChart,
-  Package,
   ShoppingCart,
   Store,
+  UserCog,
 } from 'lucide-react'
 
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 const PERSONA_ICONS = {
   owner: LineChart,
   cashier: ShoppingCart,
-  stock_manager: Package,
+  manager: UserCog,
 } as const
 
 const TONE_STYLES = {
@@ -54,7 +54,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#F5F3FF]">
+    <div className="flex min-h-dvh flex-col bg-[#F5F3FF]">
       <div className="bg-violet-600 px-5 pb-10 pt-14 text-center text-white">
         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
           <Store className="h-8 w-8" aria-hidden />

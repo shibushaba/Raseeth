@@ -102,6 +102,18 @@ const PATTERNS: Array<{ match: RegExp; message: string }> = [
     message: 'A record with that identifier already exists.',
   },
   {
+    match: /only shop managers can add salesmen/i,
+    message: 'Only a shop manager can add salesmen.',
+  },
+  {
+    match: /already registered/i,
+    message: 'This mobile number is already registered.',
+  },
+  {
+    match: /valid 10-digit mobile/i,
+    message: 'Enter a valid 10-digit mobile number.',
+  },
+  {
     match: /sale item has no inventory cost/i,
     message: 'This sale has no cost snapshot and cannot be returned yet.',
   },

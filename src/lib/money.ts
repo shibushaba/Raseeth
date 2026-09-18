@@ -24,6 +24,15 @@ export function formatMoney(value: string | number | null | undefined): string {
   return INR.format(parseMoney(value))
 }
 
+/** PDF / Helvetica-safe INR (no ₹ glyph). */
+export function formatMoneyPdf(value: string | number | null | undefined): string {
+  const n = parseMoney(value)
+  return `Rs. ${n.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
+
 /** Line total from unit price × qty using integer paise (minor units). */
 export function lineTotal(
   unitPrice: string | number,

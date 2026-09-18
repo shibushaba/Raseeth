@@ -24,6 +24,7 @@ export const queryKeys = {
   },
   inventory: {
     summary: ['inventory', 'summary'] as const,
+    alerts: ['inventory', 'alerts'] as const,
   },
   business: {
     all: ['business'] as const,
@@ -50,5 +51,12 @@ export const queryKeys = {
   },
   team: {
     profiles: ['team', 'profiles'] as const,
+    shop: (shopId: string) => ['team', 'shop', shopId] as const,
+  },
+  shops: {
+    all: ['shops'] as const,
+    mine: ['shops', 'mine'] as const,
+    detail: (id: string) => ['shops', 'detail', id] as const,
+    network: (rangeKey: string) => ['shops', 'network', rangeKey] as const,
   },
 }

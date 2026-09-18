@@ -40,6 +40,7 @@ export function AdjustStockForm({
           queryKey: queryKeys.inventoryHistory.byProduct(product.id),
         }),
         queryClient.invalidateQueries({ queryKey: queryKeys.inventory.summary }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.inventory.alerts }),
         queryClient.invalidateQueries({ queryKey: queryKeys.business.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.activity.all }),
       ])

@@ -8,6 +8,7 @@ import { PortalTabs } from '@/components/layout/portal/PortalTabs'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { createSale, getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
+import { useShopScope } from '@/features/shop/useShopScope'
 import {
   productToCartSeed,
   unitPriceForType,
@@ -22,17 +23,121 @@ import {
 } from '@/features/sales/components/PaymentPanel'
 import { PosProductGrid } from '@/features/sales/components/PosProductGrid'
 import { PosRecentSales } from '@/features/sales/components/PosRecentSales'
+import { SaleAdjustmentsPanel } from '@/features/sales/components/SaleAdjustmentsPanel'
 import { localDayBounds } from '@/lib/datetime'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
 import { formatMoney, lineTotal, sumCartTotal, toMoneyString } from '@/lib/money'
 import { uniqueCategories } from '@/lib/product-categories'
 import { printSaleReceipt } from '@/lib/print-sale-receipt'
+import {
+  adjustmentsForApi,
+  DEFAULT_SALE_ADJUSTMENTS,
+  resolveSaleAdjustments,
+  type SaleAdjustmentInput,
+} from '@/lib/sale-adjustments'
 import { PAYMENT_METHOD_LABEL } from '@/lib/payment-labels'
 import type { PaymentMethod, Product, Sale } from '@/types/database'
 import { createSaleSchema } from '@/validation/schemas'
 
 type PosScreen = 'browse' | 'cart' | 'payment' | 'receipt'
 type BrowseTab = 'products' | 'sales'
+
+const DOCK_ABOVE_NAV =
+  'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px))'
+
+/** Room for cart dock (scrollable lines + checkout button) above bottom nav. */
+const BROWSE_SCROLL_PAD_WITH_CART =
+  'calc(var(--bottom-nav-height) + 13rem + env(safe-area-inset-bottom, 0px))'
+
+function BrowseCartDock({
+  cart,
+  cartCount,
+  total,
+  onOpenCart,
+  onUpdateQty,
+}: {
+  cart: CartItem[]
+  cartCount: number
+  total: string
+  onOpenCart: () => void
+  onUpdateQty: (productId: string, qty: number) => void
+}) {
+  if (cartCount <= 0) return null
+
+  return (
+    <div
+      className="fixed inset-x-0 z-40 border-t border-violet-100 bg-surface shadow-[0_-8px_24px_rgba(124,58,237,0.12)]"
+      style={{ bottom: DOCK_ABOVE_NAV }}
+    >
+      <div className="mx-auto flex w-full max-w-lg flex-col">
+        <div
+          className="max-h-[min(36vh,14rem)] overflow-y-auto overscroll-contain px-3 pt-2"
+          aria-label="Cart items"
+        >
+          <ul className="space-y-0">
+            {cart.map((item) => {
+              const unit = unitPriceForType(item)
+              const line = lineTotal(unit, item.quantity)
+              return (
+                <li
+                  key={item.product_id}
+                  className="flex items-center gap-2 border-b border-border/60 py-2 last:border-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-foreground">
+                      {item.name}
+                    </p>
+                    <p className="text-[10px] font-semibold text-muted">
+                      {formatMoney(unit)} × {item.quantity}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center rounded-lg bg-accent-soft text-accent">
+                    <button
+                      type="button"
+                      onClick={() => onUpdateQty(item.product_id, item.quantity - 1)}
+                      className="flex h-7 w-7 items-center justify-center text-sm font-extrabold"
+                      aria-label={`Decrease ${item.name}`}
+                    >
+                      −
+                    </button>
+                    <span className="w-6 text-center text-xs font-extrabold text-foreground">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateQty(item.product_id, item.quantity + 1)}
+                      className="flex h-7 w-7 items-center justify-center text-sm font-extrabold"
+                      aria-label={`Increase ${item.name}`}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span className="w-14 shrink-0 text-right text-xs font-extrabold text-accent">
+                    {formatMoney(line)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+
+        <div className="px-3 pb-2 pt-1">
+          <button
+            type="button"
+            onClick={onOpenCart}
+            className="flex w-full items-center justify-between rounded-2xl bg-accent px-5 py-3 font-extrabold text-white active:bg-violet-700"
+          >
+            <span className="rounded-lg bg-white/20 px-2 py-0.5 text-sm">
+              {cartCount}
+            </span>
+            <span>View Cart</span>
+            <span className="font-black">{total}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 type CompletedSale = Sale & {
   payments: Array<{ method: PaymentMethod; amount: number }>
@@ -44,6 +149,13 @@ type CompletedSale = Sale & {
     line_total: number
   }>
   sold_by_name?: string | null
+  pricing?: {
+    subtotal: number
+    discount: number
+    tax: number
+    other: number
+    note: string | null
+  }
 }
 
 async function invalidateAfterSale(
@@ -55,6 +167,7 @@ async function invalidateAfterSale(
     queryClient.invalidateQueries({ queryKey: queryKeys.sales.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.inventoryHistory.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.inventory.summary }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.inventory.alerts }),
     queryClient.invalidateQueries({
       queryKey: queryKeys.sales.todaySummary(dayKey),
     }),
@@ -75,6 +188,7 @@ function cartTotal(cart: CartItem[]) {
 export function PosScreen() {
   const queryClient = useQueryClient()
   const { profile, signOut } = useAuth()
+  const { shopId } = useShopScope()
   const [screen, setScreen] = useState<PosScreen>('browse')
   const [browseTab, setBrowseTab] = useState<BrowseTab>('products')
   const [search, setSearch] = useState('')
@@ -88,10 +202,13 @@ export function PosScreen() {
     { id: '1', method: 'CASH', amount: '' },
     { id: '2', method: 'UPI', amount: '' },
   ])
+  const [saleAdjustments, setSaleAdjustments] = useState<SaleAdjustmentInput>(
+    DEFAULT_SALE_ADJUSTMENTS,
+  )
 
   const productsQuery = useQuery({
-    queryKey: queryKeys.products.list(deferredSearch),
-    queryFn: () => getProducts(deferredSearch),
+    queryKey: [...queryKeys.products.list(deferredSearch), shopId ?? 'all'],
+    queryFn: () => getProducts(deferredSearch, shopId),
   })
 
   const allProducts = productsQuery.data ?? []
@@ -110,7 +227,12 @@ export function PosScreen() {
     return list
   }, [allProducts, category])
 
-  const total = useMemo(() => cartTotal(cart), [cart])
+  const subtotal = useMemo(() => cartTotal(cart), [cart])
+  const pricing = useMemo(
+    () => resolveSaleAdjustments(subtotal, saleAdjustments),
+    [subtotal, saleAdjustments],
+  )
+  const grandTotal = pricing.grandTotal
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0)
 
   const cartInvalid = cart.some(
@@ -120,7 +242,7 @@ export function PosScreen() {
       (item.price_type === 'CUSTOM' && unitPriceForType(item) <= 0),
   )
 
-  const payCheck = paymentStatus(paymentMode, total, splitRows)
+  const payCheck = paymentStatus(paymentMode, grandTotal, splitRows)
 
   const mutation = useMutation({
     mutationFn: createSale,
@@ -135,6 +257,7 @@ export function PosScreen() {
           line_total: lineTotal(unitPrice, item.quantity),
         }
       })
+      const apiAdj = variables.adjustments
       setCompleted({
         ...sale,
         payments: variables.payments.map((p) => ({
@@ -143,11 +266,21 @@ export function PosScreen() {
         })),
         receiptItems,
         sold_by_name: profile?.full_name ?? null,
+        pricing: apiAdj
+          ? {
+              subtotal: Number(sale.subtotal_amount ?? sale.total_amount),
+              discount: apiAdj.discount_amount ?? 0,
+              tax: apiAdj.tax_amount ?? 0,
+              other: apiAdj.other_charges ?? 0,
+              note: apiAdj.note ?? null,
+            }
+          : undefined,
       })
       setCart([])
       setSearch('')
       setError(null)
       setPaymentMode('UPI')
+      setSaleAdjustments(DEFAULT_SALE_ADJUSTMENTS)
       setSplitRows([
         { id: '1', method: 'CASH', amount: '' },
         { id: '2', method: 'UPI', amount: '' },
@@ -222,11 +355,12 @@ export function PosScreen() {
         return
       }
     }
-    const status = paymentStatus(paymentMode, total, splitRows)
+    const status = paymentStatus(paymentMode, grandTotal, splitRows)
     if (!status.valid) {
       setError(status.message)
       return
     }
+    const apiAdjustments = adjustmentsForApi(pricing)
     const payload = {
       items: cart.map((item) => ({
         product_id: item.product_id,
@@ -234,12 +368,13 @@ export function PosScreen() {
         unit_price: Number(toMoneyString(unitPriceForType(item))),
         price_type: item.price_type,
       })),
-      payments: buildPaymentsFromMode(paymentMode, total, splitRows).map(
+      payments: buildPaymentsFromMode(paymentMode, grandTotal, splitRows).map(
         (p) => ({
           method: p.method,
           amount: Number(toMoneyString(p.amount)),
         }),
       ),
+      adjustments: apiAdjustments,
     }
     const parsed = createSaleSchema.safeParse(payload)
     if (!parsed.success) {
@@ -254,17 +389,18 @@ export function PosScreen() {
   if (screen === 'receipt' && completed) {
     const paid = completed.payments.reduce((a, p) => a + p.amount, 0)
 
-    function handlePrint() {
-      const ok = printSaleReceipt({
+    async function handlePrint() {
+      const ok = await printSaleReceipt({
         sale_number: completed!.sale_number,
         created_at: completed!.created_at,
         total_amount: Number(completed!.total_amount),
         items: completed!.receiptItems,
         payments: completed!.payments,
         sold_by: completed!.sold_by_name,
+        pricing: completed!.pricing,
       })
       if (!ok) {
-        window.alert('Unable to open print window. Allow pop-ups and try again.')
+        window.alert('Unable to download receipt PDF. Please try again.')
       }
     }
 
@@ -311,6 +447,35 @@ export function PosScreen() {
                 </div>
               ))}
               <div className="space-y-1 border-t-2 border-dashed border-border pt-3">
+                {completed.pricing &&
+                (completed.pricing.discount > 0 ||
+                  completed.pricing.tax > 0 ||
+                  completed.pricing.other > 0) ? (
+                  <>
+                    <div className="flex justify-between text-sm text-muted">
+                      <span>Subtotal</span>
+                      <span>{formatMoney(completed.pricing.subtotal)}</span>
+                    </div>
+                    {completed.pricing.discount > 0 ? (
+                      <div className="flex justify-between text-sm text-emerald-600">
+                        <span>Discount</span>
+                        <span>−{formatMoney(completed.pricing.discount)}</span>
+                      </div>
+                    ) : null}
+                    {completed.pricing.tax > 0 ? (
+                      <div className="flex justify-between text-sm text-muted">
+                        <span>GST / tax</span>
+                        <span>+{formatMoney(completed.pricing.tax)}</span>
+                      </div>
+                    ) : null}
+                    {completed.pricing.other > 0 ? (
+                      <div className="flex justify-between text-sm text-muted">
+                        <span>Other</span>
+                        <span>+{formatMoney(completed.pricing.other)}</span>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
                 <div className="flex justify-between">
                   <span className="font-extrabold text-foreground">Total</span>
                   <span className="text-lg font-black text-accent">
@@ -337,7 +502,7 @@ export function PosScreen() {
         <div className="space-y-2 border-t border-border bg-surface p-4">
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={() => void handlePrint()}
             className="w-full rounded-2xl border-2 border-accent py-3.5 text-sm font-extrabold text-accent"
           >
             Print Receipt
@@ -379,9 +544,14 @@ export function PosScreen() {
           <h2 className="font-extrabold text-foreground">Payment</h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          <SaleAdjustmentsPanel
+            input={saleAdjustments}
+            onChange={setSaleAdjustments}
+            resolved={pricing}
+          />
           <PaymentPanel
-            saleTotal={total}
+            saleTotal={grandTotal}
             mode={paymentMode}
             onModeChange={setPaymentMode}
             splitRows={splitRows}
@@ -401,7 +571,7 @@ export function PosScreen() {
           >
             {mutation.isPending
               ? 'Processing…'
-              : `Confirm Payment · ${formatMoney(total)}`}
+              : `Confirm Payment · ${formatMoney(grandTotal)}`}
           </button>
         </div>
       </div>
@@ -507,7 +677,7 @@ export function PosScreen() {
               <div className="flex justify-between border-t border-border pt-2">
                 <span className="font-extrabold text-foreground">Total</span>
                 <span className="text-lg font-black text-accent">
-                  {formatMoney(total)}
+                  {formatMoney(subtotal)}
                 </span>
               </div>
               <button
@@ -515,7 +685,7 @@ export function PosScreen() {
                 onClick={() => setScreen('payment')}
                 className="w-full rounded-2xl bg-accent py-4 text-base font-extrabold text-white shadow-md active:bg-violet-700"
               >
-                Proceed to Payment · {formatMoney(total)}
+                Proceed to Payment · {formatMoney(subtotal)}
               </button>
             </div>
           </>
@@ -575,7 +745,14 @@ export function PosScreen() {
             </p>
           ) : null}
 
-          <div className="flex-1 overflow-y-auto">
+          <div
+            className="flex-1 overflow-y-auto"
+            style={
+              cartCount > 0
+                ? { paddingBottom: BROWSE_SCROLL_PAD_WITH_CART }
+                : undefined
+            }
+          >
             <PosProductGrid
               products={filteredProducts}
               isLoading={productsQuery.isLoading}
@@ -584,26 +761,25 @@ export function PosScreen() {
           </div>
         </>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div
+          className="flex-1 overflow-y-auto"
+          style={
+            cartCount > 0
+              ? { paddingBottom: BROWSE_SCROLL_PAD_WITH_CART }
+              : undefined
+          }
+        >
           <PosRecentSales />
         </div>
       )}
 
-      {cartCount > 0 ? (
-        <div className="border-t border-border bg-surface p-3">
-          <button
-            type="button"
-            onClick={() => setScreen('cart')}
-            className="flex w-full items-center justify-between rounded-2xl bg-accent px-5 py-3.5 font-extrabold text-white active:bg-violet-700"
-          >
-            <span className="rounded-lg bg-white/20 px-2 py-0.5 text-sm">
-              {cartCount}
-            </span>
-            <span>View Cart</span>
-            <span className="font-black">{formatMoney(total)}</span>
-          </button>
-        </div>
-      ) : null}
+      <BrowseCartDock
+        cart={cart}
+        cartCount={cartCount}
+        total={formatMoney(subtotal)}
+        onOpenCart={() => setScreen('cart')}
+        onUpdateQty={updateQty}
+      />
     </div>
   )
 }

@@ -48,8 +48,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <SearchProvider openSearch={openSearch}>
-      <div className="flex h-full min-h-0 flex-col bg-[#F5F3FF] text-foreground">
-        <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto pb-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))]">
+      <div className="flex min-h-dvh flex-col bg-[#F5F3FF] text-foreground">
+        <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto pb-[calc(var(--bottom-nav-height)+1rem+env(safe-area-inset-bottom,0px))]">
           {children}
         </main>
 

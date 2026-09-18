@@ -61,3 +61,8 @@ UPDATE public.profiles p
 SET phone = '9876500002'
 FROM auth.users u
 WHERE p.id = u.id AND u.email = 'salesman@raseeth.demo';
+
+UPDATE public.profiles p
+SET phone = '9876500003'
+FROM auth.users u
+WHERE p.id = u.id AND u.email = 'manager@raseeth.demo';

@@ -24,6 +24,7 @@ async function invalidateAfterReturn(
     queryClient.invalidateQueries({ queryKey: queryKeys.products.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.inventoryHistory.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.inventory.summary }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.inventory.alerts }),
     queryClient.invalidateQueries({ queryKey: queryKeys.sales.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.sales.detail(saleId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.returns.all }),

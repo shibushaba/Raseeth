@@ -1,4 +1,4 @@
-import { Activity, MessageSquare, Search, Settings } from 'lucide-react'
+import { Activity, LogOut, MessageSquare, Search, Settings } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Card, CardBody } from '@/components/ui/card'
@@ -50,6 +50,17 @@ export function MorePage() {
         <h1 className="text-2xl font-black text-foreground">More</h1>
       </div>
 
+      <div className="px-4">
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-danger/30 bg-danger-soft py-4 text-sm font-extrabold text-danger shadow-sm transition-colors hover:bg-danger-soft/80"
+        >
+          <LogOut className="h-5 w-5" aria-hidden />
+          Log out / switch user
+        </button>
+      </div>
+
       <ul className="space-y-2 px-4">
         {items.map((item) => {
           const Icon = item.icon
@@ -97,15 +108,6 @@ export function MorePage() {
         })}
       </ul>
 
-      <div className="px-4">
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="w-full rounded-2xl border border-border bg-surface py-3 text-sm font-medium text-muted transition-colors hover:bg-accent-soft/30 hover:text-foreground"
-        >
-          Switch user
-        </button>
-      </div>
     </div>
   )
 }

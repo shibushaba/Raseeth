@@ -36,6 +36,30 @@ export const createProductSchema = z.object({
   initial_quantity: z.coerce.number().int().min(0),
 })
 
+export const updateProductSchema = createProductSchema.omit({
+  initial_quantity: true,
+})
+
+export const createShopSchema = z.object({
+  name: z.string().trim().min(1, 'Shop name is required').max(120),
+})
+
+export const assignShopManagerSchema = z.object({
+  shop_id: z.string().uuid(),
+  manager_id: z.string().uuid().nullable(),
+})
+
+export const addShopSalesmanSchema = z.object({
+  full_name: z.string().trim().min(1, 'Name is required').max(120),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Enter mobile number')
+    .transform(normalizePhoneDigits)
+    .refine(isValidIndianMobile, 'Enter a valid 10-digit mobile number'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+})
+
 export const addStockSchema = z.object({
   product_id: z.string().uuid(),
   quantity: z.coerce.number().int().positive('Quantity must be positive'),
@@ -72,6 +96,15 @@ export const paymentLineSchema = z.object({
   amount: positiveMoneySchema,
 })
 
+const saleAdjustmentsSchema = z
+  .object({
+    discount_amount: moneySchema.optional().default(0),
+    tax_amount: moneySchema.optional().default(0),
+    other_charges: moneySchema.optional().default(0),
+    note: z.string().trim().max(500).optional().nullable(),
+  })
+  .optional()
+
 export const createSaleSchema = z.object({
   items: z
     .array(
@@ -99,6 +132,7 @@ export const createSaleSchema = z.object({
   payments: z
     .array(paymentLineSchema)
     .min(1, 'At least one payment is required'),
+  adjustments: saleAdjustmentsSchema,
 })
 
 export const messageSchema = z.object({
@@ -122,6 +156,7 @@ export const createReturnSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>
 export type CreateProductInput = z.infer<typeof createProductSchema>
+export type UpdateProductInput = z.infer<typeof updateProductSchema>
 export type AddStockInput = z.infer<typeof addStockSchema>
 export type AdjustStockInput = z.infer<typeof adjustStockSchema>
 export type CreateSaleInput = z.infer<typeof createSaleSchema>

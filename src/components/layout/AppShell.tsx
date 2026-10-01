@@ -9,6 +9,7 @@ import { useLocation } from 'react-router-dom'
 
 import { BottomNav } from '@/components/layout/BottomNav'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { OwnerShopProvider } from '@/features/shop/OwnerShopContext'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
 import { SearchProvider } from '@/features/search/SearchContext'
 
@@ -47,11 +48,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const hideNav = location.pathname === '/login'
 
   return (
-    <SearchProvider openSearch={openSearch}>
-      <div className="flex min-h-dvh flex-col bg-[#F5F3FF] text-foreground">
-        <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto pb-[calc(var(--bottom-nav-height)+1rem+env(safe-area-inset-bottom,0px))]">
-          {children}
-        </main>
+    <OwnerShopProvider>
+      <SearchProvider openSearch={openSearch}>
+        <div className="flex min-h-dvh flex-col bg-[#F5F3FF] text-foreground">
+          <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto pb-[calc(var(--bottom-nav-height)+1rem+env(safe-area-inset-bottom,0px))]">
+            {children}
+          </main>
 
         {!hideNav && <BottomNav role={role} />}
 
@@ -60,7 +62,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           onClose={closeSearch}
           returnFocusRef={searchTriggerRef}
         />
-      </div>
-    </SearchProvider>
+        </div>
+      </SearchProvider>
+    </OwnerShopProvider>
   )
 }

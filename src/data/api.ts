@@ -156,6 +156,35 @@ export async function createShop(name: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+export type CreateShopWithManagerResult = {
+  shop_id: string
+  shop_name: string
+  manager_id: string
+  manager_created: boolean
+}
+
+export async function createShopWithManager(input: {
+  name: string
+  manager_name: string
+  manager_phone: string
+  manager_password: string
+}): Promise<CreateShopWithManagerResult> {
+  const { data, error } = await supabase.rpc('create_shop_with_manager', {
+    p_shop_name: input.name,
+    p_manager_name: input.manager_name,
+    p_manager_phone: input.manager_phone,
+    p_manager_password: input.manager_password,
+  })
+  if (error) throw new Error(error.message)
+  const raw = (data ?? {}) as Record<string, unknown>
+  return {
+    shop_id: String(raw.shop_id),
+    shop_name: String(raw.shop_name ?? input.name),
+    manager_id: String(raw.manager_id),
+    manager_created: Boolean(raw.manager_created),
+  }
+}
+
 export async function assignShopManager(
   shopId: string,
   managerId: string | null,

@@ -6,6 +6,8 @@ export type DemoPersonaConfig = {
   id: DemoPersona
   title: string
   subtitle: string
+  /** Auth email (tap-login fallback when phone lookup is missing). */
+  email: string
   phone: string
   password: string
   entryPath: string
@@ -17,6 +19,7 @@ export const DEMO_PERSONAS: DemoPersonaConfig[] = [
     id: 'owner',
     title: 'Owner',
     subtitle: 'All shops, revenue & managers',
+    email: 'owner@raseeth.demo',
     phone: '9876500001',
     password: 'DemoOwner123!',
     entryPath: '/overview',
@@ -26,18 +29,20 @@ export const DEMO_PERSONAS: DemoPersonaConfig[] = [
     id: 'cashier',
     title: 'Cashier',
     subtitle: 'POS & recent sales',
+    email: 'salesman@raseeth.demo',
     phone: '9876500002',
     password: 'DemoSalesman123!',
-    entryPath: '/sales',
+    entryPath: '/home',
     tone: 'violet',
   },
   {
     id: 'manager',
     title: 'Manager',
     subtitle: 'Run your shop — sales, stock & trends',
+    email: 'manager@raseeth.demo',
     phone: '9876500003',
     password: 'DemoManager123!',
-    entryPath: '/overview',
+    entryPath: '/manager/home',
     tone: 'emerald',
   },
 ]

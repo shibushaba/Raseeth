@@ -45,9 +45,25 @@ export function LoginPage() {
     setSubmitting(persona)
     try {
       await signInAsDemo(persona)
-    } catch {
+    } catch (err) {
       clearDemoEntryPath()
-      setError('Could not sign in. Check demo users in Supabase.')
+      const msg =
+        err instanceof Error ? err.message : 'Could not sign in.'
+      const lower = msg.toLowerCase()
+      if (lower.includes('fetch') || lower.includes('network')) {
+        setError(
+          'Cannot reach Supabase. Check VITE_SUPABASE_URL in .env.local and your internet connection.',
+        )
+      } else if (
+        lower.includes('invalid login') ||
+        lower.includes('no account')
+      ) {
+        setError(
+          'Demo user missing or wrong password. In the project folder run: npm run demo:ensure-auth (needs SUPABASE_SERVICE_ROLE_KEY in .env.local).',
+        )
+      } else {
+        setError(msg)
+      }
     } finally {
       setSubmitting(null)
     }

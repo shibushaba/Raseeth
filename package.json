@@ -12,7 +12,9 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:ui": "node scripts/ui-mobile-validation.mjs",
-    "demo:ensure-auth": "node --env-file=.env.local scripts/ensure-demo-auth.mjs"
+    "demo:ensure-auth": "node --env-file=.env.local scripts/ensure-demo-auth.mjs",
+    "purge:sales": "node --env-file=.env.local scripts/purge-all-sales.mjs",
+    "purge:data": "node --env-file=.env.local scripts/purge-all-data.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

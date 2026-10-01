@@ -44,6 +44,18 @@ export const createShopSchema = z.object({
   name: z.string().trim().min(1, 'Shop name is required').max(120),
 })
 
+export const createShopWithManagerSchema = z.object({
+  name: z.string().trim().min(1, 'Shop name is required').max(120),
+  manager_name: z.string().trim().min(1, 'Manager name is required').max(120),
+  manager_phone: z
+    .string()
+    .trim()
+    .min(1, 'Enter manager mobile number')
+    .transform(normalizePhoneDigits)
+    .refine(isValidIndianMobile, 'Enter a valid 10-digit mobile number'),
+  manager_password: z.string().min(6, 'Password must be at least 6 characters'),
+})
+
 export const assignShopManagerSchema = z.object({
   shop_id: z.string().uuid(),
   manager_id: z.string().uuid().nullable(),

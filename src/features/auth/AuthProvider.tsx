@@ -94,8 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       { p_phone: phone },
     )
 
-    if (lookupError || !email) {
-      throw new Error('Invalid login credentials')
+    if (lookupError) {
+      throw lookupError
+    }
+
+    if (!email) {
+      throw new Error('No account found for this mobile number.')
     }
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -108,7 +112,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInAsDemo = useCallback(async (persona: DemoPersona) => {
     const config = demoPersonaById(persona)
     setDemoEntryPath(config.entryPath)
-    await signIn(config.phone, config.password)
+
+    try {
+      await signIn(config.phone, config.password)
+      return
+    } catch {
+      // Demo tap-login: phone on profile may be unset until ensure-demo-auth runs.
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: config.email,
+      password: config.password,
+    })
+    if (error) throw error
   }, [signIn])
 
   const signOut = useCallback(async () => {

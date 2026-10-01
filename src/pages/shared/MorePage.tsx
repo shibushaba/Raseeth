@@ -1,4 +1,11 @@
-import { Activity, LogOut, MessageSquare, Search, Settings } from 'lucide-react'
+import {
+  Activity,
+  LogOut,
+  MessageSquare,
+  Search,
+  Settings,
+  Store,
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Card, CardBody } from '@/components/ui/card'
@@ -10,7 +17,7 @@ import { Link } from 'react-router-dom'
 import { useGlobalSearch } from '@/features/search/SearchContext'
 
 export function MorePage() {
-  const { signOut } = useAuth()
+  const { signOut, role } = useAuth()
   const { openSearch } = useGlobalSearch()
 
   const unreadQuery = useQuery({
@@ -21,6 +28,15 @@ export function MorePage() {
   const unread = unreadQuery.data ?? 0
 
   const items = [
+    ...(role === 'OWNER'
+      ? [
+          {
+            label: 'Shops & team',
+            to: '/manage',
+            icon: Store,
+          },
+        ]
+      : []),
     {
       label: 'Activity',
       to: '/activity',

@@ -6,16 +6,17 @@ import {
   PortalField,
   PortalTextInput,
 } from '@/components/ui/portal-field'
+import { PasswordInput } from '@/components/ui/password-input'
 import {
   assignShopManager,
-  createShop,
+  createShopWithManager,
   getShops,
   getTeamProfiles,
 } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
-import { createShopSchema } from '@/validation/schemas'
+import { createShopWithManagerSchema } from '@/validation/schemas'
 
 function roleLabel(role: string): string {
   if (role === 'OWNER') return 'Owner'
@@ -59,7 +60,12 @@ export function OwnerManagePage() {
     queryClient.invalidateQueries({ queryKey: queryKeys.shops.all })
 
   const createShopMutation = useMutation({
-    mutationFn: (name: string) => createShop(name),
+    mutationFn: (input: {
+      name: string
+      manager_name: string
+      manager_phone: string
+      manager_password: string
+    }) => createShopWithManager(input),
     onSuccess: async () => {
       await invalidateShops()
       setAddShopOpen(false)
@@ -94,12 +100,17 @@ export function OwnerManagePage() {
     e.preventDefault()
     setFormError(null)
     const fd = new FormData(e.currentTarget)
-    const parsed = createShopSchema.safeParse({ name: fd.get('name') })
+    const parsed = createShopWithManagerSchema.safeParse({
+      name: fd.get('name'),
+      manager_name: fd.get('manager_name'),
+      manager_phone: fd.get('manager_phone'),
+      manager_password: fd.get('manager_password'),
+    })
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message ?? 'Check the form.')
       return
     }
-    createShopMutation.mutate(parsed.data.name)
+    createShopMutation.mutate(parsed.data)
   }
 
   return (
@@ -274,7 +285,7 @@ export function OwnerManagePage() {
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-extrabold text-foreground">
-                Add shop
+                Create shop & manager
               </h2>
               <button
                 type="button"
@@ -289,8 +300,33 @@ export function OwnerManagePage() {
               <PortalField label="Shop name">
                 <PortalTextInput
                   name="name"
-                  placeholder="e.g. Main Street Store"
+                  placeholder="e.g. Kozhikode Main"
                   required
+                />
+              </PortalField>
+              <p className="text-xs font-bold text-muted">Manager</p>
+              <PortalField label="Name">
+                <PortalTextInput
+                  name="manager_name"
+                  placeholder="Ahmed"
+                  required
+                />
+              </PortalField>
+              <PortalField label="Mobile number">
+                <PortalTextInput
+                  name="manager_phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="10-digit mobile"
+                  required
+                />
+              </PortalField>
+              <PortalField label="Password">
+                <PasswordInput
+                  name="manager_password"
+                  placeholder="At least 6 characters"
+                  required
+                  autoComplete="new-password"
                 />
               </PortalField>
               {formError ? (
@@ -301,7 +337,9 @@ export function OwnerManagePage() {
                 disabled={createShopMutation.isPending}
                 className="w-full rounded-2xl bg-accent py-3.5 font-extrabold text-white disabled:opacity-60"
               >
-                {createShopMutation.isPending ? 'Saving…' : 'Create shop'}
+                {createShopMutation.isPending
+                  ? 'Creating…'
+                  : 'Create shop & manager'}
               </button>
             </form>
           </div>

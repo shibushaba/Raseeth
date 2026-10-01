@@ -1,10 +1,10 @@
 import {
+  Home,
   LayoutGrid,
   LineChart,
   Package,
   ShoppingCart,
   UserPlus,
-  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -21,6 +21,12 @@ type NavDef = {
 
 function salesmanNav(): NavDef[] {
   return [
+    {
+      label: 'Home',
+      to: '/home',
+      icon: Home,
+      isActive: (p) => p === '/home',
+    },
     {
       label: 'Sales',
       to: '/sales',
@@ -61,13 +67,14 @@ function ownerNav(): NavDef[] {
       icon: Package,
       isActive: (p) => p === '/inventory' || p.startsWith('/inventory/'),
     },
-    { label: 'Manage', to: '/manage', icon: Users },
     {
       label: 'More',
       to: '/more',
       icon: LayoutGrid,
       isActive: (p) =>
         p.startsWith('/more') ||
+        p.startsWith('/manage') ||
+        p.startsWith('/shops') ||
         p.startsWith('/activity') ||
         p.startsWith('/messages') ||
         p.startsWith('/settings'),
@@ -77,7 +84,12 @@ function ownerNav(): NavDef[] {
 
 function managerNav(): NavDef[] {
   return [
-    { label: 'Overview', to: '/overview', icon: LineChart },
+    {
+      label: 'Home',
+      to: '/manager/home',
+      icon: Home,
+      isActive: (p) => p === '/manager/home',
+    },
     {
       label: 'Sales',
       to: '/sales',

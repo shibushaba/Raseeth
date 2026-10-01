@@ -732,6 +732,15 @@ export interface Database {
         Args: { p_name: string }
         Returns: Database['public']['Tables']['shops']['Row']
       }
+      create_shop_with_manager: {
+        Args: {
+          p_shop_name: string
+          p_manager_name: string
+          p_manager_phone: string
+          p_manager_password: string
+        }
+        Returns: Json
+      }
       assign_shop_manager: {
         Args: { p_shop_id: string; p_manager_id: string | null }
         Returns: Database['public']['Tables']['shops']['Row']

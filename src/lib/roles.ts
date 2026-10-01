@@ -101,6 +101,7 @@ export function desktopNavItemsFor(role: UserRole): NavItem[] {
       { label: 'Overview', to: '/overview', primary: true },
       { label: 'Sales', to: '/sales', primary: true },
       { label: 'Inventory', to: '/inventory', primary: true },
+      { label: 'Shops', to: '/manage' },
       { label: 'Activity', to: '/activity' },
       { label: 'Messages', to: '/messages' },
       { label: 'Settings', to: '/settings' },
@@ -109,7 +110,7 @@ export function desktopNavItemsFor(role: UserRole): NavItem[] {
 
   if (role === 'MANAGER') {
     return [
-      { label: 'Overview', to: '/overview', primary: true },
+      { label: 'Home', to: '/manager/home', primary: true },
       { label: 'Sales', to: '/sales', primary: true },
       { label: 'Inventory', to: '/inventory', primary: true },
       { label: 'Team', to: '/team', primary: true },
@@ -128,6 +129,7 @@ export function navItemsFor(role: UserRole): NavItem[] {
 }
 
 export function homePathFor(role: UserRole): string {
-  if (role === 'OWNER' || role === 'MANAGER') return '/overview'
-  return '/sales'
+  if (role === 'OWNER') return '/overview'
+  if (role === 'MANAGER') return '/manager/home'
+  return '/home'
 }

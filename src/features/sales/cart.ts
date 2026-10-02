@@ -3,6 +3,7 @@ import type { PriceType, Product } from '@/types/database'
 
 export type CartItem = {
   product_id: string
+  shop_id: string | null
   product_code: string
   name: string
   quantity: number
@@ -26,6 +27,7 @@ export function unitPriceForType(
 export function productToCartSeed(product: Product): Omit<CartItem, 'quantity'> {
   return {
     product_id: product.id,
+    shop_id: product.shop_id,
     product_code: product.product_code,
     name: product.name,
     price_type: 'RETAIL',

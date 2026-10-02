@@ -182,6 +182,16 @@ const PATTERNS: Array<{ match: RegExp; message: string }> = [
     message: "You don't have permission to do that.",
   },
   {
+    match: /product belongs to another shop/i,
+    message:
+      'A product in your cart is from another shop. Go back, clear the cart, and add items again.',
+  },
+  {
+    match: /no shop assigned/i,
+    message:
+      'Your account is not linked to a shop. Ask the owner to add you as a salesman for that shop.',
+  },
+  {
     match: /permission denied for table messages/i,
     message: "You don't have permission to send this message.",
   },

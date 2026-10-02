@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 
@@ -10,9 +10,11 @@ import {
   PortalTextInput,
 } from '@/components/ui/portal-field'
 import { CategoryField } from '@/features/inventory/components/CategoryField'
-import { createProduct } from '@/data/api'
+import { createProduct, getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
+import { uniqueCategories } from '@/lib/product-categories'
+import { BOTTOM_NAV_OFFSET } from '@/lib/layout'
 import { createProductSchema } from '@/validation/schemas'
 
 export function CreateProductForm() {
@@ -21,6 +23,15 @@ export function CreateProductForm() {
   const [error, setError] = useState<string | null>(null)
   const [createdCode, setCreatedCode] = useState<string | null>(null)
   const [createdId, setCreatedId] = useState<string | null>(null)
+
+  const productsQuery = useQuery({
+    queryKey: queryKeys.products.all,
+    queryFn: () => getProducts(),
+  })
+  const categorySuggestions = useMemo(
+    () => uniqueCategories(productsQuery.data ?? []),
+    [productsQuery.data],
+  )
 
   const mutation = useMutation({
     mutationFn: createProduct,
@@ -54,6 +65,7 @@ export function CreateProductForm() {
       retail_price: fd.get('retail_price'),
       wholesale_price: fd.get('wholesale_price'),
       initial_quantity: fd.get('initial_quantity') || 0,
+      minimum_quantity: fd.get('minimum_quantity') ?? 5,
     })
 
     if (!parsed.success) {
@@ -101,7 +113,11 @@ export function CreateProductForm() {
   }
 
   return (
-    <form className="space-y-4 p-4 pb-24" onSubmit={onSubmit}>
+    <form
+      className="space-y-4 p-4"
+      style={{ paddingBottom: `calc(6rem + ${BOTTOM_NAV_OFFSET})` }}
+      onSubmit={onSubmit}
+    >
       <PortalCard title="Basic Info">
         <div className="space-y-3 p-4">
           <PortalField label="Product Name">
@@ -116,12 +132,12 @@ export function CreateProductForm() {
               className="w-full rounded-xl border border-border bg-accent-soft/50 px-4 py-3 text-sm font-semibold text-foreground placeholder-muted outline-none focus:border-accent"
             />
           </PortalField>
-          <CategoryField />
+          <CategoryField suggestions={categorySuggestions} />
         </div>
       </PortalCard>
 
       <PortalCard title="Pricing">
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 p-4">
           <PortalField label="Purchase Price">
             <PortalPriceInput id="purchase_price" name="purchase_price" required />
           </PortalField>
@@ -135,7 +151,7 @@ export function CreateProductForm() {
       </PortalCard>
 
       <PortalCard title="Initial Stock">
-        <div className="p-4">
+        <div className="grid grid-cols-2 gap-3 p-4">
           <PortalField label="Quantity">
             <PortalTextInput
               id="initial_quantity"
@@ -145,9 +161,19 @@ export function CreateProductForm() {
               placeholder="0"
             />
           </PortalField>
-          <p className="mt-2 text-xs text-muted">
-            Product ID is assigned automatically. Initial stock is recorded as a
-            purchase.
+          <PortalField label="Min. alert qty">
+            <PortalTextInput
+              id="minimum_quantity"
+              name="minimum_quantity"
+              type="number"
+              inputMode="numeric"
+              placeholder="5"
+              defaultValue="5"
+            />
+          </PortalField>
+          <p className="col-span-2 text-xs text-muted">
+            Low-stock alert when quantity is at or below the minimum. Product ID
+            is assigned automatically.
           </p>
         </div>
       </PortalCard>
@@ -156,7 +182,10 @@ export function CreateProductForm() {
         <p className="text-sm font-semibold text-red-600" role="alert">{error}</p>
       ) : null}
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-border bg-surface p-4">
+      <div
+        className="fixed inset-x-0 z-40 mx-auto max-w-lg border-t border-border bg-surface/95 p-4 backdrop-blur"
+        style={{ bottom: BOTTOM_NAV_OFFSET }}
+      >
         <button
           type="submit"
           disabled={mutation.isPending}

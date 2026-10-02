@@ -4,7 +4,6 @@ import {
   LineChart,
   Package,
   ShoppingCart,
-  UserPlus,
   type LucideIcon,
 } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -32,12 +31,6 @@ function salesmanNav(): NavDef[] {
       to: '/sales',
       icon: ShoppingCart,
       isActive: (p) => p === '/sales' || p.startsWith('/sales/'),
-    },
-    {
-      label: 'Stock',
-      to: '/inventory',
-      icon: Package,
-      isActive: (p) => p === '/inventory' || p.startsWith('/inventory/'),
     },
     {
       label: 'More',
@@ -91,22 +84,10 @@ function managerNav(): NavDef[] {
       isActive: (p) => p === '/manager/home',
     },
     {
-      label: 'Sales',
-      to: '/sales',
-      icon: ShoppingCart,
-      isActive: (p) => p === '/sales' || p.startsWith('/sales/'),
-    },
-    {
       label: 'Stock',
       to: '/inventory',
       icon: Package,
       isActive: (p) => p === '/inventory' || p.startsWith('/inventory/'),
-    },
-    {
-      label: 'Team',
-      to: '/team',
-      icon: UserPlus,
-      isActive: (p) => p === '/team',
     },
     {
       label: 'More',

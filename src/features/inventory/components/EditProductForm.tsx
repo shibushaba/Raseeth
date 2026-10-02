@@ -1,4 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { useState, type FormEvent } from 'react'
 import { Check } from 'lucide-react'
 
@@ -9,11 +10,12 @@ import {
   PortalTextInput,
 } from '@/components/ui/portal-field'
 import { CategoryField } from '@/features/inventory/components/CategoryField'
-import { updateProduct } from '@/data/api'
+import { getProducts, updateProduct } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
 import { parseMoney } from '@/lib/money'
 import type { Product } from '@/types/database'
+import { uniqueCategories } from '@/lib/product-categories'
 import { updateProductSchema } from '@/validation/schemas'
 
 export function EditProductForm({
@@ -26,6 +28,15 @@ export function EditProductForm({
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+
+  const productsQuery = useQuery({
+    queryKey: queryKeys.products.all,
+    queryFn: () => getProducts(),
+  })
+  const categorySuggestions = useMemo(
+    () => uniqueCategories(productsQuery.data ?? []),
+    [productsQuery.data],
+  )
 
   const mutation = useMutation({
     mutationFn: (input: Parameters<typeof updateProduct>[1]) =>
@@ -60,6 +71,7 @@ export function EditProductForm({
       purchase_price: fd.get('purchase_price'),
       retail_price: fd.get('retail_price'),
       wholesale_price: fd.get('wholesale_price'),
+      minimum_quantity: fd.get('minimum_quantity'),
     })
 
     if (!parsed.success) {
@@ -109,7 +121,11 @@ export function EditProductForm({
               className="w-full rounded-xl border border-border bg-accent-soft/50 px-4 py-3 text-sm font-semibold text-foreground placeholder-muted outline-none focus:border-accent"
             />
           </PortalField>
-          <CategoryField defaultValue={product.category ?? ''} />
+          <CategoryField
+            key={product.id}
+            defaultValue={product.category ?? ''}
+            suggestions={categorySuggestions}
+          />
         </div>
       </PortalCard>
 
@@ -140,10 +156,22 @@ export function EditProductForm({
             />
           </PortalField>
         </div>
-        <p className="border-t border-border px-4 py-3 text-xs text-muted">
-          Stock quantity is changed with Add Stock or Fix Stock on the product
-          page.
-        </p>
+        <div className="space-y-3 border-t border-border p-4">
+          <PortalField label="Minimum quantity (alert)">
+            <PortalTextInput
+              id="minimum_quantity"
+              name="minimum_quantity"
+              type="number"
+              inputMode="numeric"
+              defaultValue={String(product.minimum_quantity ?? 5)}
+              required
+            />
+          </PortalField>
+          <p className="text-xs text-muted">
+            Low-stock alerts fire when on-hand quantity is at or below this
+            number. Change stock with Add Stock or Fix Stock on the product page.
+          </p>
+        </div>
       </PortalCard>
 
       {error ? (

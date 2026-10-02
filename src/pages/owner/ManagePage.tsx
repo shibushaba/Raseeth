@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, Plus, Store, UserCog, X } from 'lucide-react'
+import { ChevronRight, Plus, Store, UserPlus, UserCog, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
 import {
@@ -12,15 +12,20 @@ import {
   createShopWithManager,
   getShops,
   getTeamProfiles,
+  listShopSalesmen,
+  ownerAddShopSalesman,
 } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
-import { createShopWithManagerSchema } from '@/validation/schemas'
+import {
+  addShopSalesmanSchema,
+  createShopWithManagerSchema,
+} from '@/validation/schemas'
 
 function roleLabel(role: string): string {
   if (role === 'OWNER') return 'Owner'
-  if (role === 'MANAGER') return 'Manager'
+  if (role === 'MANAGER') return 'Stock manager'
   if (role === 'SALESMAN') return 'Salesman'
   return role
 }
@@ -39,6 +44,7 @@ export function OwnerManagePage() {
   const queryClient = useQueryClient()
   const [addShopOpen, setAddShopOpen] = useState(false)
   const [assignShopId, setAssignShopId] = useState<string | null>(null)
+  const [staffShopId, setStaffShopId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   const teamQuery = useQuery({
@@ -55,6 +61,13 @@ export function OwnerManagePage() {
     (p) => p.role === 'SALESMAN' || p.role === 'MANAGER',
   )
   const assignShop = (shopsQuery.data ?? []).find((s) => s.id === assignShopId)
+  const staffShop = (shopsQuery.data ?? []).find((s) => s.id === staffShopId)
+
+  const salesmenQuery = useQuery({
+    queryKey: ['shop-salesmen', staffShopId],
+    queryFn: () => listShopSalesmen(staffShopId!),
+    enabled: Boolean(staffShopId),
+  })
 
   const invalidateShops = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.shops.all })
@@ -74,6 +87,26 @@ export function OwnerManagePage() {
     onError: (err) => {
       logTechnicalError('createShop', err)
       setFormError(toUserMessage(err, 'Unable to create shop.'))
+    },
+  })
+
+  const addSalesmanMutation = useMutation({
+    mutationFn: (input: {
+      shop_id: string
+      full_name: string
+      phone: string
+      password: string
+    }) => ownerAddShopSalesman(input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['shop-salesmen', staffShopId],
+      })
+      await invalidateShops()
+      setFormError(null)
+    },
+    onError: (err) => {
+      logTechnicalError('ownerAddShopSalesman', err)
+      setFormError(toUserMessage(err, 'Could not add salesman.'))
     },
   })
 
@@ -113,11 +146,31 @@ export function OwnerManagePage() {
     createShopMutation.mutate(parsed.data)
   }
 
+  function onAddSalesmanSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!staffShopId) return
+    setFormError(null)
+    const fd = new FormData(e.currentTarget)
+    const parsed = addShopSalesmanSchema.safeParse({
+      full_name: fd.get('full_name'),
+      phone: fd.get('phone'),
+      password: fd.get('password'),
+    })
+    if (!parsed.success) {
+      setFormError(parsed.error.issues[0]?.message ?? 'Check the form.')
+      return
+    }
+    addSalesmanMutation.mutate({ shop_id: staffShopId, ...parsed.data })
+    e.currentTarget.reset()
+  }
+
   return (
     <div className="flex min-h-dvh flex-col">
       <div className="px-4 pb-2 pt-6">
         <h1 className="text-2xl font-black text-foreground">Team & Shop</h1>
-        <p className="text-sm text-muted">Manage your team</p>
+        <p className="text-sm text-muted">
+          Add a stock manager and salesmen to each shop
+        </p>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
@@ -169,40 +222,48 @@ export function OwnerManagePage() {
                 </p>
               ) : null}
               {(shopsQuery.data ?? []).map((shop) => (
-                <button
+                <div
                   key={shop.id}
-                  type="button"
-                  onClick={() => {
-                    setFormError(null)
-                    setAssignShopId(shop.id)
-                  }}
-                  className="flex w-full items-center gap-3 border-b border-border px-4 py-4 text-left last:border-0 active:bg-accent-soft/40"
+                  className="flex items-center gap-2 border-b border-border px-4 py-3 last:border-0"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-                    <Store className="h-5 w-5 text-accent" aria-hidden />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold text-foreground">
-                      {shop.name}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormError(null)
+                      setAssignShopId(shop.id)
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left active:opacity-80"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft">
+                      <Store className="h-5 w-5 text-accent" aria-hidden />
                     </div>
-                    <div className="text-xs text-muted">
-                      {shop.worker_count} worker
-                      {shop.worker_count !== 1 ? 's' : ''}
-                      {shop.manager_name
-                        ? ` · Manager: ${shop.manager_name}`
-                        : ' · No manager assigned'}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-foreground">
+                        {shop.name}
+                      </div>
+                      <div className="text-xs text-muted">
+                        {shop.worker_count} staff
+                        {shop.manager_name
+                          ? ` · ${shop.manager_name}`
+                          : ' · No stock manager'}
+                      </div>
                     </div>
-                  </div>
-                  {shop.is_active ? (
-                    <span className="hidden rounded-full bg-success-soft px-2.5 py-0.5 text-[10px] font-bold text-success sm:inline">
-                      Active
-                    </span>
-                  ) : null}
-                  <ChevronRight
-                    className="h-4 w-4 shrink-0 text-muted"
-                    aria-hidden
-                  />
-                </button>
+                    <ChevronRight
+                      className="h-4 w-4 shrink-0 text-muted"
+                      aria-hidden
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormError(null)
+                      setStaffShopId(shop.id)
+                    }}
+                    className="shrink-0 rounded-full border border-border px-3 py-1.5 text-[10px] font-bold text-accent"
+                  >
+                    Salesmen
+                  </button>
+                </div>
               ))}
             </div>
           ) : null}
@@ -285,7 +346,7 @@ export function OwnerManagePage() {
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-extrabold text-foreground">
-                Create shop & manager
+                Create shop & stock manager
               </h2>
               <button
                 type="button"
@@ -304,7 +365,7 @@ export function OwnerManagePage() {
                   required
                 />
               </PortalField>
-              <p className="text-xs font-bold text-muted">Manager</p>
+              <p className="text-xs font-bold text-muted">Stock manager</p>
               <PortalField label="Name">
                 <PortalTextInput
                   name="manager_name"
@@ -339,7 +400,7 @@ export function OwnerManagePage() {
               >
                 {createShopMutation.isPending
                   ? 'Creating…'
-                  : 'Create shop & manager'}
+                  : 'Create shop & stock manager'}
               </button>
             </form>
           </div>
@@ -351,7 +412,7 @@ export function OwnerManagePage() {
           className="fixed inset-0 z-[60] flex items-end bg-black/50"
           role="dialog"
           aria-modal="true"
-          aria-label="Assign shop manager"
+          aria-label="Assign stock manager"
           onClick={() => setAssignShopId(null)}
         >
           <div
@@ -364,7 +425,7 @@ export function OwnerManagePage() {
                 <div>
                   <div className="flex items-center gap-2 font-extrabold text-foreground">
                     <UserCog className="h-4 w-4 text-accent" aria-hidden />
-                    Assign manager
+                    Assign stock manager
                   </div>
                   <div className="mt-0.5 text-xs text-muted">{assignShop.name}</div>
                 </div>
@@ -382,7 +443,7 @@ export function OwnerManagePage() {
             <div className="flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
               {managerCandidates.length === 0 ? (
                 <p className="text-sm text-muted">
-                  Add a cashier to your team before assigning a manager.
+                  Add a team member before assigning a stock manager.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -419,7 +480,7 @@ export function OwnerManagePage() {
                           </div>
                           {selected ? (
                             <span className="text-[10px] font-bold text-accent">
-                              Manager
+                              Stock manager
                             </span>
                           ) : null}
                         </button>
@@ -441,7 +502,7 @@ export function OwnerManagePage() {
                   }
                   className="mt-4 w-full rounded-2xl border border-border py-3 text-sm font-bold text-muted"
                 >
-                  Remove manager
+                  Remove stock manager
                 </button>
               ) : null}
 
@@ -450,6 +511,101 @@ export function OwnerManagePage() {
                   {formError}
                 </p>
               ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {staffShop && staffShopId ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-end bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Shop salesmen"
+          onClick={() => setStaffShopId(null)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full flex-col rounded-t-3xl bg-surface"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="shrink-0 px-5 pb-2 pt-3">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 font-extrabold text-foreground">
+                    <UserPlus className="h-4 w-4 text-accent" aria-hidden />
+                    Salesmen
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted">{staffShop.name}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStaffShopId(null)}
+                  className="rounded-full p-2 text-muted"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+              <ul className="mb-4 space-y-2">
+                {(salesmenQuery.data ?? []).length === 0 ? (
+                  <li className="text-sm text-muted">No salesmen yet.</li>
+                ) : (
+                  (salesmenQuery.data ?? []).map((member) => (
+                    <li
+                      key={member.id}
+                      className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
+                        {getInitials(member.full_name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-bold">{member.full_name}</div>
+                        <div className="text-xs text-muted">
+                          {member.phone ?? 'Salesman'}
+                        </div>
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+
+              <form onSubmit={onAddSalesmanSubmit} className="space-y-3 border-t border-border pt-4">
+                <p className="text-xs font-bold text-muted">Add salesman</p>
+                <PortalField label="Name">
+                  <PortalTextInput name="full_name" required placeholder="Rahul" />
+                </PortalField>
+                <PortalField label="Mobile number">
+                  <PortalTextInput
+                    name="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    required
+                    placeholder="10-digit mobile"
+                  />
+                </PortalField>
+                <PortalField label="Password">
+                  <PasswordInput
+                    name="password"
+                    required
+                    autoComplete="new-password"
+                    placeholder="At least 6 characters"
+                  />
+                </PortalField>
+                {formError ? (
+                  <p className="text-sm text-danger" role="alert">{formError}</p>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={addSalesmanMutation.isPending}
+                  className="w-full rounded-2xl bg-accent py-3.5 font-extrabold text-white disabled:opacity-60"
+                >
+                  {addSalesmanMutation.isPending ? 'Creating…' : 'Create salesman'}
+                </button>
+              </form>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useDeferredValue, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowRight,
@@ -16,7 +16,6 @@ import { PortalTabs } from '@/components/layout/portal/PortalTabs'
 import {
   getInventorySummary,
   getProducts,
-  getStockAlertProducts,
 } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -25,17 +24,50 @@ import { InventoryProductList } from '@/features/inventory/components/InventoryP
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
 import { formatMoney, parseMoney } from '@/lib/money'
 import { uniqueCategories } from '@/lib/product-categories'
-import { getStockLevel } from '@/lib/stock'
+import { getStockLevel, partitionStockAlerts } from '@/lib/stock'
 import type { InventorySummary } from '@/data/api'
 import type { Permissions } from '@/lib/roles'
 import type { Product } from '@/types/database'
 
 type InvTab = 'dashboard' | 'products' | 'alerts'
+type AlertFilter = 'all' | 'low' | 'out'
 
-function StockBar({ stock }: { stock: number }) {
-  const max = Math.max(20, stock * 2)
+function inventoryRouteState(pathname: string): {
+  tab: InvTab
+  alertFilter: AlertFilter
+} {
+  if (pathname === '/inventory/products') {
+    return { tab: 'products', alertFilter: 'all' }
+  }
+  if (pathname === '/inventory/alerts/low') {
+    return { tab: 'alerts', alertFilter: 'low' }
+  }
+  if (pathname === '/inventory/alerts/out') {
+    return { tab: 'alerts', alertFilter: 'out' }
+  }
+  if (pathname === '/inventory/alerts') {
+    return { tab: 'alerts', alertFilter: 'all' }
+  }
+  return { tab: 'dashboard', alertFilter: 'all' }
+}
+
+function tabToPath(tab: InvTab): string {
+  if (tab === 'products') return '/inventory/products'
+  if (tab === 'alerts') return '/inventory/alerts'
+  return '/inventory'
+}
+
+function StockBar({
+  stock,
+  minimumQuantity,
+}: {
+  stock: number
+  minimumQuantity?: number | null
+}) {
+  const min = minimumQuantity ?? 20
+  const max = Math.max(min * 2, stock * 2, 1)
   const pct = Math.min(100, (stock / max) * 100)
-  const level = getStockLevel(stock)
+  const level = getStockLevel(stock, minimumQuantity)
   const color =
     level === 'out'
       ? 'bg-red-400'
@@ -108,10 +140,14 @@ function InventoryDashboard({
 }) {
   const outOfStock = products.filter((p) => p.current_quantity === 0)
   const lowStock = products.filter(
-    (p) => p.current_quantity > 0 && getStockLevel(p.current_quantity) === 'low',
+    (p) =>
+      p.current_quantity > 0 &&
+      getStockLevel(p.current_quantity, p.minimum_quantity) === 'low',
   )
   const healthyStock = products.filter(
-    (p) => p.current_quantity > 0 && getStockLevel(p.current_quantity) !== 'low',
+    (p) =>
+      p.current_quantity > 0 &&
+      getStockLevel(p.current_quantity, p.minimum_quantity) !== 'low',
   )
   const totalUnits = products.reduce((s, p) => s + p.current_quantity, 0)
   const totalValue = products.reduce(
@@ -158,6 +194,7 @@ function InventoryDashboard({
       hint: 'Active products',
       color: 'bg-violet-500',
       icon: Package,
+      to: '/inventory/products',
     },
     {
       label: 'Units on hand',
@@ -165,26 +202,32 @@ function InventoryDashboard({
       hint: 'Total quantity',
       color: 'bg-emerald-500',
       icon: Layers,
+      to: '/inventory/stock',
     },
     {
       label: 'Low stock',
-      value: summary?.low_stock ?? lowStock.length,
+      value: lowStock.length,
       hint: 'Needs reorder',
       color: 'bg-amber-500',
       icon: AlertTriangle,
+      to: '/inventory/alerts/low',
     },
     {
       label: 'Out of stock',
-      value: summary?.out_of_stock ?? outOfStock.length,
+      value: outOfStock.length,
       hint: 'Restock now',
       color: 'bg-red-500',
       icon: Ban,
+      to: '/inventory/alerts/out',
     },
   ]
 
   return (
     <div className="flex-1 space-y-5 overflow-y-auto px-4 pb-6 pt-2">
-      <div className="rounded-3xl bg-gradient-to-br from-emerald-600 to-emerald-500 p-5 text-white shadow-lg">
+      <Link
+        to="/inventory/value"
+        className="block rounded-3xl bg-gradient-to-br from-emerald-600 to-emerald-500 p-5 text-white shadow-lg transition-transform active:scale-[0.99]"
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider opacity-80">
@@ -207,15 +250,20 @@ function InventoryDashboard({
             {summary.recent_adjustments === 1 ? '' : 's'} in the last 7 days
           </p>
         ) : null}
-      </div>
+        <p className="mt-3 flex items-center gap-1 text-xs font-bold opacity-90">
+          View breakdown
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+        </p>
+      </Link>
 
       <div className="grid grid-cols-2 gap-3">
         {cards.map((card) => {
           const Icon = card.icon
           return (
-            <div
+            <Link
               key={card.label}
-              className="rounded-2xl border border-border bg-surface p-4 shadow-sm"
+              to={card.to}
+              className="rounded-2xl border border-border bg-surface p-4 shadow-sm transition-transform active:scale-[0.98] hover:border-emerald-200"
             >
               <div
                 className={`mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl ${card.color} text-white shadow-sm`}
@@ -229,7 +277,11 @@ function InventoryDashboard({
                 {card.label}
               </div>
               <div className="text-[11px] font-medium text-muted">{card.hint}</div>
-            </div>
+              <ArrowRight
+                className="mt-2 h-4 w-4 text-muted"
+                aria-hidden
+              />
+            </Link>
           )
         })}
       </div>
@@ -367,7 +419,12 @@ function InventoryDashboard({
                       >
                         {isOut ? 'Out of stock' : `Only ${p.current_quantity} left`}
                       </p>
-                      {!isOut ? <StockBar stock={p.current_quantity} /> : null}
+                      {!isOut ? (
+                        <StockBar
+                          stock={p.current_quantity}
+                          minimumQuantity={p.minimum_quantity}
+                        />
+                      ) : null}
                     </div>
                     <ArrowRight className="h-4 w-4 shrink-0 text-muted" />
                   </Link>
@@ -400,15 +457,22 @@ function InventoryAlerts({
   products,
   isLoading,
   errorMessage,
+  filter = 'all',
 }: {
   products: Product[]
   isLoading: boolean
   errorMessage: string | null
+  filter?: AlertFilter
 }) {
   const outOfStock = products.filter((p) => p.current_quantity === 0)
   const lowStock = products.filter(
-    (p) => p.current_quantity > 0 && getStockLevel(p.current_quantity) === 'low',
+    (p) =>
+      p.current_quantity > 0 &&
+      getStockLevel(p.current_quantity, p.minimum_quantity) === 'low',
   )
+
+  const showOut = filter === 'all' || filter === 'out'
+  const showLow = filter === 'all' || filter === 'low'
 
   if (isLoading) {
     return (
@@ -426,7 +490,13 @@ function InventoryAlerts({
     )
   }
 
-  if (outOfStock.length === 0 && lowStock.length === 0) {
+  const emptyOut = showOut && outOfStock.length === 0
+  const emptyLow = showLow && lowStock.length === 0
+  if (
+    (filter === 'out' && emptyOut) ||
+    (filter === 'low' && emptyLow) ||
+    (filter === 'all' && outOfStock.length === 0 && lowStock.length === 0)
+  ) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 p-12 text-muted">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
@@ -439,7 +509,7 @@ function InventoryAlerts({
 
   return (
     <div className="space-y-4 overflow-y-auto p-4">
-      {outOfStock.length > 0 ? (
+      {showOut && outOfStock.length > 0 ? (
         <div>
           <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-danger">
             Out of Stock
@@ -462,7 +532,7 @@ function InventoryAlerts({
         </div>
       ) : null}
 
-      {lowStock.length > 0 ? (
+      {showLow && lowStock.length > 0 ? (
         <div>
           <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-warning">
             Low Stock
@@ -484,7 +554,10 @@ function InventoryAlerts({
                   Add Stock <ArrowRight className="inline h-3 w-3" />
                 </span>
               </div>
-              <StockBar stock={p.current_quantity} />
+              <StockBar
+                stock={p.current_quantity}
+                minimumQuantity={p.minimum_quantity}
+              />
             </Link>
           ))}
         </div>
@@ -495,25 +568,22 @@ function InventoryAlerts({
 
 export function InventoryPage() {
   const { permissions } = useAuth()
-  const { shopId } = useShopScope()
-  const [tab, setTab] = useState<InvTab>('dashboard')
+  const { shopId, productShopScope, productScopeKey } = useShopScope()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { tab, alertFilter } = inventoryRouteState(location.pathname)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string | null>(null)
   const deferredSearch = useDeferredValue(search.trim())
 
   const productsQuery = useQuery({
-    queryKey: [...queryKeys.products.list(deferredSearch), shopId ?? 'all'],
-    queryFn: () => getProducts(deferredSearch, shopId),
+    queryKey: queryKeys.products.list(deferredSearch, productScopeKey),
+    queryFn: () => getProducts(deferredSearch, productShopScope),
   })
 
   const summaryQuery = useQuery({
-    queryKey: queryKeys.inventory.summary,
-    queryFn: getInventorySummary,
-  })
-
-  const alertsQuery = useQuery({
-    queryKey: [...queryKeys.inventory.alerts, shopId ?? 'all'],
-    queryFn: () => getStockAlertProducts(shopId),
+    queryKey: [...queryKeys.inventory.summary, shopId ?? 'all'],
+    queryFn: () => getInventorySummary(shopId),
   })
 
   const errorMessage = useMemo(() => {
@@ -541,17 +611,8 @@ export function InventoryPage() {
     return list
   }, [products, category])
 
-  const alertProducts = alertsQuery.data ?? []
-  const alertCount = alertProducts.length
-
-  const alertsErrorMessage = useMemo(() => {
-    if (!alertsQuery.error) return null
-    logTechnicalError('getStockAlertProducts', alertsQuery.error)
-    return toUserMessage(
-      alertsQuery.error,
-      'Unable to load stock alerts.',
-    )
-  }, [alertsQuery.error])
+  const stockAlerts = useMemo(() => partitionStockAlerts(products), [products])
+  const alertCount = stockAlerts.alertProducts.length
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -572,10 +633,18 @@ export function InventoryPage() {
             <p className="mt-1 text-sm text-muted">Manage your stock</p>
             <InventoryQuickActions
               permissions={permissions}
-              onBrowseProducts={() => setTab('products')}
-              onViewAlerts={() => setTab('alerts')}
+              onBrowseProducts={() => navigate('/inventory/products')}
+              onViewAlerts={() => navigate('/inventory/alerts')}
             />
           </>
+        ) : tab === 'alerts' ? (
+          <p className="mt-1 text-sm text-muted">
+            {alertFilter === 'low'
+              ? 'Products at or below minimum stock'
+              : alertFilter === 'out'
+                ? 'Products with zero quantity'
+                : 'Manage your stock'}
+          </p>
         ) : (
           <p className="mt-1 text-sm text-muted">Manage your stock</p>
         )}
@@ -589,14 +658,14 @@ export function InventoryPage() {
           { id: 'alerts', label: 'Alerts', badge: alertCount },
         ]}
         activeId={tab}
-        onChange={(id) => setTab(id as InvTab)}
+        onChange={(id) => navigate(tabToPath(id as InvTab))}
       />
 
       {tab === 'dashboard' ? (
         <InventoryDashboard
           products={products}
           summary={summaryQuery.data}
-          onGoAlerts={() => setTab('alerts')}
+          onGoAlerts={() => navigate('/inventory/alerts')}
         />
       ) : null}
 
@@ -659,9 +728,10 @@ export function InventoryPage() {
 
       {tab === 'alerts' ? (
         <InventoryAlerts
-          products={alertProducts}
-          isLoading={alertsQuery.isLoading}
-          errorMessage={alertsErrorMessage}
+          products={products}
+          isLoading={productsQuery.isLoading}
+          errorMessage={errorMessage}
+          filter={alertFilter}
         />
       ) : null}
     </div>

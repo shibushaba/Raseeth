@@ -13,6 +13,10 @@
     "preview": "vite preview",
     "test:ui": "node scripts/ui-mobile-validation.mjs",
     "demo:ensure-auth": "node --env-file=.env.local scripts/ensure-demo-auth.mjs",
+    "db:push": "node --env-file=.env.local scripts/db-push-api.mjs",
+    "db:push:postgres": "node --env-file=.env.local scripts/db-push.mjs",
+    "db:probe": "node --env-file=.env.local scripts/probe-remote-rpcs.mjs",
+    "db:bundle": "node scripts/bundle-migrations.mjs",
     "purge:sales": "node --env-file=.env.local scripts/purge-all-sales.mjs",
     "purge:data": "node --env-file=.env.local scripts/purge-all-data.mjs"
   },
@@ -37,8 +41,10 @@
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "oxlint": "^1.79.0",
+    "postgres": "^3.4.9",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }

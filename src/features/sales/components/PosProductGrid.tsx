@@ -39,7 +39,10 @@ export function PosProductGrid({
     <div className="grid grid-cols-2 gap-3 p-4">
       {products.map((product) => {
         const isOut = product.current_quantity <= 0
-        const stockLevel = getStockLevel(product.current_quantity)
+        const stockLevel = getStockLevel(
+          product.current_quantity,
+          product.minimum_quantity,
+        )
         return (
           <button
             key={product.id}
@@ -55,6 +58,9 @@ export function PosProductGrid({
             ) : null}
             <div className="mt-0.5 text-sm font-extrabold leading-tight text-foreground">
               {product.name}
+            </div>
+            <div className="mt-0.5 text-[11px] font-semibold text-muted">
+              {product.product_code}
             </div>
             <div className="mt-2 text-base font-black text-accent">
               {formatMoney(product.retail_price)}

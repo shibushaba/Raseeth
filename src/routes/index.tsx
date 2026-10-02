@@ -8,11 +8,12 @@ import { OwnerManagePage } from '@/pages/owner/ManagePage'
 import { OwnerOverviewPage } from '@/pages/owner/OverviewPage'
 import { ShopDetailPage } from '@/pages/owner/ShopDetailPage'
 import { ManagerHomePage } from '@/pages/manager/ManagerHomePage'
-import { ManagerTeamPage } from '@/pages/manager/TeamPage'
 import { SalesmanHomePage } from '@/pages/salesman/SalesmanHomePage'
 import { CreateProductPage } from '@/pages/shared/CreateProductPage'
 import { ActivityPage } from '@/pages/shared/ActivityPage'
 import { InventoryPage } from '@/pages/shared/InventoryPage'
+import { InventoryStockPage } from '@/pages/shared/inventory/InventoryStockPage'
+import { InventoryValuePage } from '@/pages/shared/inventory/InventoryValuePage'
 import { MessagesPage } from '@/pages/shared/MessagesPage'
 import { MorePage } from '@/pages/shared/MorePage'
 import { SettingsPage } from '@/pages/shared/SettingsPage'
@@ -58,8 +59,12 @@ export function AppRouter() {
             <Route path="/home" element={<SalesmanHomePage />} />
           </Route>
 
-          <Route element={<RoleRoute allow={['SALESMAN', 'MANAGER']} />}>
+          <Route element={<RoleRoute allow={['MANAGER']} />}>
+            <Route path="/manager/home" element={<ManagerHomePage />} />
             <Route path="/inventory/new" element={<CreateProductPage />} />
+          </Route>
+
+          <Route element={<RoleRoute allow={['SALESMAN']} />}>
             <Route path="/sales/history" element={<SalesHistoryPage />} />
           </Route>
 
@@ -67,29 +72,35 @@ export function AppRouter() {
             <Route path="/overview" element={<OwnerOverviewPage />} />
           </Route>
 
-          <Route element={<RoleRoute allow={['MANAGER']} />}>
-            <Route path="/manager/home" element={<ManagerHomePage />} />
-            <Route path="/team" element={<ManagerTeamPage />} />
-          </Route>
-
           <Route element={<RoleRoute allow={['OWNER']} />}>
             <Route path="/manage" element={<OwnerManagePage />} />
             <Route path="/shops/:shopId" element={<ShopDetailPage />} />
           </Route>
 
-          <Route path="/sales" element={<SalesPage />} />
-          <Route path="/sales/:saleId" element={<SaleDetailPage />} />
-          <Route
-            element={<RoleRoute allow={['SALESMAN', 'MANAGER']} />}
-          >
+          <Route element={<RoleRoute allow={['OWNER', 'SALESMAN']} />}>
+            <Route path="/sales" element={<SalesPage />} />
+            <Route path="/sales/:saleId" element={<SaleDetailPage />} />
+          </Route>
+
+          <Route element={<RoleRoute allow={['SALESMAN']} />}>
             <Route
               path="/sales/:saleId/return"
               element={<ReturnItemsPage />}
             />
           </Route>
+
           <Route path="/returns/:returnId" element={<ReturnDetailPage />} />
-          <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/inventory/:productId" element={<ProductDetailPage />} />
+
+          <Route element={<RoleRoute allow={['OWNER', 'MANAGER']} />}>
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/inventory/products" element={<InventoryPage />} />
+            <Route path="/inventory/alerts" element={<InventoryPage />} />
+            <Route path="/inventory/alerts/low" element={<InventoryPage />} />
+            <Route path="/inventory/alerts/out" element={<InventoryPage />} />
+            <Route path="/inventory/value" element={<InventoryValuePage />} />
+            <Route path="/inventory/stock" element={<InventoryStockPage />} />
+            <Route path="/inventory/:productId" element={<ProductDetailPage />} />
+          </Route>
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/more" element={<MorePage />} />

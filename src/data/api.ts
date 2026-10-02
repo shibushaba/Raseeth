@@ -1,5 +1,4 @@
 import { formatMoney, toMoneyString } from '@/lib/money'
-import { LOW_STOCK_THRESHOLD } from '@/lib/stock'
 import type { BusinessPulse, BusinessSignal } from '@/lib/business-pulse'
 import {
   GLOBAL_SEARCH_LIMITS,
@@ -9,6 +8,15 @@ import {
   type SearchResult,
 } from '@/lib/global-search'
 import { supabase } from '@/lib/supabase'
+import {
+  productMatchesShopScope,
+  type ProductShopScope,
+} from '@/lib/product-shop-scope'
+import {
+  getStockLevel,
+  partitionStockAlerts,
+  resolveMinimumQuantity,
+} from '@/lib/stock'
 import type { ActivityItem } from '@/types/activity'
 import type {
   AddStockInput,
@@ -78,6 +86,17 @@ function assertData<T>(data: T | null, error: { message: string } | null): T {
   return data
 }
 
+/** PostgREST when an RPC name/signature is not deployed yet. */
+function isMissingRpcError(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false
+  const msg = (error.message ?? '').toLowerCase()
+  return (
+    error.code === 'PGRST202' ||
+    msg.includes('could not find the function') ||
+    msg.includes('schema cache')
+  )
+}
+
 function mapCreatorName(
   creator: { full_name: string } | { full_name: string }[] | null | undefined,
 ): string | null {
@@ -114,12 +133,36 @@ export async function listMyShopTeam(): Promise<Profile[]> {
   return data ?? []
 }
 
+/** @deprecated Managers no longer add salesmen; use ownerAddShopSalesman. */
 export async function addShopSalesman(input: {
   full_name: string
   phone: string
   password: string
 }): Promise<Profile> {
   const { data, error } = await supabase.rpc('add_shop_salesman', {
+    p_full_name: input.full_name,
+    p_phone: input.phone,
+    p_password: input.password,
+  })
+  return assertData(data, error)
+}
+
+export async function listShopSalesmen(shopId: string): Promise<Profile[]> {
+  const { data, error } = await supabase.rpc('list_shop_salesmen', {
+    p_shop_id: shopId,
+  })
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+export async function ownerAddShopSalesman(input: {
+  shop_id: string
+  full_name: string
+  phone: string
+  password: string
+}): Promise<Profile> {
+  const { data, error } = await supabase.rpc('owner_add_shop_salesman', {
+    p_shop_id: input.shop_id,
     p_full_name: input.full_name,
     p_phone: input.phone,
     p_password: input.password,
@@ -217,6 +260,19 @@ export async function getMyShop(): Promise<MyShop | null> {
   }
 }
 
+/** Shops the signed-in staff member may access (POS + inventory). */
+export async function getMyAccessibleShopIds(): Promise<string[]> {
+  const { data, error } = await supabase.rpc('list_my_accessible_shop_ids')
+  if (!error && Array.isArray(data)) {
+    return data.map((id) => String(id))
+  }
+  if (isMissingRpcError(error)) {
+    const shop = await getMyShop()
+    return shop?.id ? [shop.id] : []
+  }
+  throw new Error(error?.message ?? 'Unable to load shop access')
+}
+
 export type OwnerShopRow = {
   id: string
   name: string
@@ -270,35 +326,50 @@ export async function getOwnerNetworkOverview(
   }
 }
 
-/** All products, optionally filtered by name or product_code. */
+const PRODUCTS_PAGE_SIZE = 500
+const PRODUCTS_MAX_PAGES = 24
+
+/** All products for the current scope, optionally filtered by name or product_code. */
 export async function getProducts(
   search?: string,
-  shopId?: string | null,
+  shopScope?: ProductShopScope,
 ): Promise<Product[]> {
-  let query = supabase
-    .from('products')
-    .select('*')
-    .order('name', { ascending: true })
-    .limit(100)
-
-  if (shopId) {
-    query = query.eq('shop_id', shopId)
-  }
-
   const term = search?.trim()
-  if (term) {
-    const safe = term.replace(/[%_,]/g, '')
+  const safe = term?.replace(/[%_,]/g, '') ?? ''
+  const products: Product[] = []
+
+  for (let page = 0; page < PRODUCTS_MAX_PAGES; page += 1) {
+    const from = page * PRODUCTS_PAGE_SIZE
+    const to = from + PRODUCTS_PAGE_SIZE - 1
+
+    let query = supabase
+      .from('products')
+      .select('*')
+      .order('name', { ascending: true })
+      .range(from, to)
+
+    if (typeof shopScope === 'string' && shopScope) {
+      query = query.eq('shop_id', shopScope)
+    } else if (Array.isArray(shopScope) && shopScope.length > 0) {
+      query = query.in('shop_id', [...shopScope])
+    }
+
     if (safe) {
       query = query.or(`name.ilike.%${safe}%,product_code.ilike.%${safe}%`)
     }
+
+    const { data, error } = await query
+    const batch = assertData(data, error)
+    products.push(...batch)
+    if (batch.length < PRODUCTS_PAGE_SIZE) break
   }
 
-  const { data, error } = await query
-  const products = assertData(data, error)
-  if (!term) return products
+  let scoped = products.filter((p) => productMatchesShopScope(p.shop_id, shopScope))
+
+  if (!term) return scoped
 
   const needle = term.toLowerCase()
-  return [...products].sort((a, b) => {
+  return [...scoped].sort((a, b) => {
     const aExact = a.product_code.toLowerCase() === needle ? 0 : 1
     const bExact = b.product_code.toLowerCase() === needle ? 0 : 1
     if (aExact !== bExact) return aExact - bExact
@@ -748,34 +819,47 @@ export type InventorySummary = {
 }
 
 /** Products that are out of stock or at/below low-stock threshold (not limited to list cap). */
+function sortAlertProducts(products: Product[]): Product[] {
+  return [...products].sort((a, b) => {
+    const rank = (l: ReturnType<typeof getStockLevel>) =>
+      l === 'out' ? 0 : l === 'low' ? 1 : 2
+    const dr =
+      rank(getStockLevel(a.current_quantity, a.minimum_quantity)) -
+      rank(getStockLevel(b.current_quantity, b.minimum_quantity))
+    if (dr !== 0) return dr
+    return a.current_quantity - b.current_quantity
+  })
+}
+
+/** Shop-scoped alerts using per-product minimum quantity (matches Alerts tab). */
 export async function getStockAlertProducts(
   shopId?: string | null,
 ): Promise<Product[]> {
-  let query = supabase
-    .from('products')
-    .select('*')
-    .lte('current_quantity', LOW_STOCK_THRESHOLD)
-    .order('current_quantity', { ascending: true })
-    .limit(500)
-
-  if (shopId) {
-    query = query.eq('shop_id', shopId)
-  }
-
-  const { data, error } = await query
-  return assertData(data, error)
+  const products = await getProducts(undefined, shopId)
+  const { alertProducts } = partitionStockAlerts(products)
+  return sortAlertProducts(alertProducts).slice(0, 500)
 }
 
-export async function getInventorySummary(): Promise<InventorySummary> {
+export async function getInventorySummary(
+  shopId?: string | null,
+): Promise<InventorySummary> {
+  const products = await getProducts(undefined, shopId)
+  const { outOfStock, lowStock } = partitionStockAlerts(products)
+
+  let recentAdjustments = 0
   const { data, error } = await supabase.rpc('get_inventory_summary')
-  if (error) throw new Error(error.message)
-  const raw = (data ?? {}) as Record<string, unknown>
+  if (!error && data) {
+    const raw = data as Record<string, unknown>
+    recentAdjustments = Number(raw.recent_adjustments ?? 0)
+  }
+
+  const needsAttention = outOfStock.length + lowStock.length
   return {
-    total_products: Number(raw.total_products ?? 0),
-    out_of_stock: Number(raw.out_of_stock ?? 0),
-    low_stock: Number(raw.low_stock ?? 0),
-    needs_attention: Number(raw.needs_attention ?? 0),
-    recent_adjustments: Number(raw.recent_adjustments ?? 0),
+    total_products: products.length,
+    out_of_stock: outOfStock.length,
+    low_stock: lowStock.length,
+    needs_attention: needsAttention,
+    recent_adjustments: recentAdjustments,
   }
 }
 
@@ -977,6 +1061,7 @@ export async function updateProduct(
       purchase_price: toMoneyString(input.purchase_price),
       retail_price: toMoneyString(input.retail_price),
       wholesale_price: toMoneyString(input.wholesale_price),
+      minimum_quantity: input.minimum_quantity,
     })
     .eq('id', productId)
     .select()
@@ -996,7 +1081,7 @@ export async function deleteProduct(productId: string): Promise<void> {
 export async function createProduct(
   input: CreateProductInput,
 ): Promise<Product> {
-  const { data, error } = await supabase.rpc('create_product', {
+  const legacyArgs = {
     p_name: input.name,
     p_description: input.description ?? null,
     p_category: input.category ?? null,
@@ -1004,8 +1089,39 @@ export async function createProduct(
     p_retail_price: input.retail_price,
     p_wholesale_price: input.wholesale_price,
     p_initial_quantity: input.initial_quantity,
+  }
+
+  const desiredMin = input.minimum_quantity ?? 5
+  let usedLegacyRpc = false
+
+  let result = await supabase.rpc('create_product', {
+    ...legacyArgs,
+    p_minimum_quantity: desiredMin,
   })
-  return assertData(data, error)
+
+  if (isMissingRpcError(result.error)) {
+    usedLegacyRpc = true
+    result = await supabase.rpc('create_product', legacyArgs)
+  }
+
+  const product = assertData(result.data, result.error)
+
+  if (
+    usedLegacyRpc &&
+    desiredMin !== resolveMinimumQuantity(product.minimum_quantity)
+  ) {
+    const { data: patched, error: patchError } = await supabase
+      .from('products')
+      .update({ minimum_quantity: desiredMin })
+      .eq('id', product.id)
+      .select()
+      .single()
+    if (!patchError && patched) {
+      return patched as Product
+    }
+  }
+
+  return product
 }
 
 /**
@@ -1069,7 +1185,10 @@ function previewText(text: string, max = 80): string {
 
 /**
  * Derives a chronological activity feed from existing domain tables.
- * Respects RLS. Salesman scope filters operational rows to their own created_by.
+ * Respects RLS.
+ * - OWNER: sales, returns, inventory, messages
+ * - SALESMAN: own sales and returns only
+ * - MANAGER: inventory (stock + products) for their shop via RLS
  * SALE movements are omitted (covered by SALE events).
  */
 export async function getRecentActivity(options: {
@@ -1081,7 +1200,11 @@ export async function getRecentActivity(options: {
   const since = new Date()
   since.setDate(since.getDate() - 7)
   const sinceIso = since.toISOString()
-  const mine = options.role === 'SALESMAN'
+  const role = options.role
+  const includeSales = role === 'OWNER' || role === 'SALESMAN'
+  const includeInventory = role === 'OWNER' || role === 'MANAGER'
+  const includeMessages = role === 'OWNER'
+  const mine = role === 'SALESMAN'
 
   let salesQuery = supabase
     .from('sales')
@@ -1125,7 +1248,6 @@ export async function getRecentActivity(options: {
     productsQuery = productsQuery.eq('created_by', options.userId)
   }
 
-  // Messages: RLS already limits to participant rows
   const messagesQuery = supabase
     .from('messages')
     .select(
@@ -1135,13 +1257,15 @@ export async function getRecentActivity(options: {
     .order('created_at', { ascending: false })
     .limit(limit)
 
+  const empty = { data: [] as never[], error: null }
+
   const [salesRes, returnsRes, movementsRes, productsRes, messagesRes] =
     await Promise.all([
-      salesQuery,
-      returnsQuery,
-      movementsQuery,
-      productsQuery,
-      messagesQuery,
+      includeSales ? salesQuery : Promise.resolve(empty),
+      includeSales ? returnsQuery : Promise.resolve(empty),
+      includeInventory ? movementsQuery : Promise.resolve(empty),
+      includeInventory ? productsQuery : Promise.resolve(empty),
+      includeMessages ? messagesQuery : Promise.resolve(empty),
     ])
 
   if (salesRes.error) throw new Error(salesRes.error.message)

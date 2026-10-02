@@ -54,6 +54,7 @@ export interface Database {
           retail_price: string
           wholesale_price: string
           current_quantity: number
+          minimum_quantity: number
           shop_id: string | null
           created_by: string
           created_at: string
@@ -70,6 +71,7 @@ export interface Database {
           retail_price: string | number
           wholesale_price: string | number
           current_quantity?: number
+          minimum_quantity?: number
           shop_id?: string | null
           created_by: string
           created_at?: string
@@ -86,6 +88,7 @@ export interface Database {
           retail_price?: string | number
           wholesale_price?: string | number
           current_quantity?: number
+          minimum_quantity?: number
           shop_id?: string | null
           created_by?: string
           created_at?: string
@@ -577,8 +580,13 @@ export interface Database {
           p_retail_price?: number
           p_wholesale_price?: number
           p_initial_quantity?: number
+          p_minimum_quantity?: number
         }
         Returns: Database['public']['Tables']['products']['Row']
+      }
+      get_stock_alert_products: {
+        Args: { p_shop_id?: string | null }
+        Returns: Database['public']['Tables']['products']['Row'][]
       }
       delete_product: {
         Args: { p_product_id: string }
@@ -700,6 +708,10 @@ export interface Database {
         Args: Record<string, never>
         Returns: Json
       }
+      list_my_accessible_shop_ids: {
+        Args: Record<string, never>
+        Returns: string[]
+      }
       current_user_role: {
         Args: Record<string, never>
         Returns: UserRole
@@ -751,6 +763,19 @@ export interface Database {
       }
       add_shop_salesman: {
         Args: {
+          p_full_name: string
+          p_phone: string
+          p_password: string
+        }
+        Returns: Database['public']['Tables']['profiles']['Row']
+      }
+      list_shop_salesmen: {
+        Args: { p_shop_id: string }
+        Returns: Database['public']['Tables']['profiles']['Row'][]
+      }
+      owner_add_shop_salesman: {
+        Args: {
+          p_shop_id: string
           p_full_name: string
           p_phone: string
           p_password: string

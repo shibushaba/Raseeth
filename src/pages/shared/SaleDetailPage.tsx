@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ChevronRight, Receipt } from 'lucide-react'
 
 import { PortalBackBar, PortalCard } from '@/components/ui/portal-field'
 import { getSale } from '@/data/api'
@@ -7,6 +8,7 @@ import { queryKeys } from '@/data/query-keys'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { formatDateTime } from '@/lib/format'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
+import { screenPadAboveBottomNav } from '@/lib/layout'
 import { formatMoney, parseMoney } from '@/lib/money'
 import { printSaleReceipt } from '@/lib/print-sale-receipt'
 import { PAYMENT_METHOD_LABEL } from '@/lib/payment-labels'
@@ -16,7 +18,7 @@ export function SaleDetailPage() {
   const navigate = useNavigate()
   const { permissions, role } = useAuth()
   const isOwner = role === 'OWNER'
-  const backTo = permissions.canCreateSale ? '/sales' : '/sales'
+  const backTo = '/sales'
 
   const saleQuery = useQuery({
     queryKey: queryKeys.sales.detail(saleId),
@@ -55,6 +57,11 @@ export function SaleDetailPage() {
     return s + cost * item.quantity
   }, 0)
   const totalProfit = Number(sale.total_amount) - totalCost
+  const units = sale.items.reduce((s, i) => s + i.quantity, 0)
+  const primaryPayment =
+    sale.payments[0]?.payment_method != null
+      ? PAYMENT_METHOD_LABEL[sale.payments[0].payment_method]
+      : '—'
 
   async function handlePrint() {
     const ok = await printSaleReceipt({
@@ -92,7 +99,10 @@ export function SaleDetailPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
+    <div
+      className="mx-auto flex min-h-dvh max-w-lg flex-col"
+      style={screenPadAboveBottomNav}
+    >
       <PortalBackBar
         title={isOwner ? 'Transaction Bill' : 'Sale Receipt'}
         subtitle={sale.sale_number}
@@ -100,12 +110,30 @@ export function SaleDetailPage() {
       />
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <div className="rounded-2xl bg-accent p-4 text-white shadow-md">
+        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-accent to-violet-700 p-5 text-white shadow-md">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
+              <Receipt className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
+                Amount collected
+              </p>
+              <p className="text-3xl font-black tabular-nums">
+                {formatMoney(sale.total_amount)}
+              </p>
+              <p className="mt-1 text-xs opacity-80">
+                {formatDateTime(sale.created_at)}
+                {sale.created_by_name ? ` · ${sale.created_by_name}` : ''}
+              </p>
+            </div>
+          </div>
+
           {Number(sale.discount_amount) > 0 ||
           Number(sale.tax_amount) > 0 ||
           Number(sale.other_charges) > 0 ? (
-            <div className="mb-3 space-y-1 text-sm opacity-90">
-              <div className="flex justify-between">
+            <div className="mt-4 space-y-1 rounded-xl bg-white/10 px-3 py-2 text-sm">
+              <div className="flex justify-between opacity-90">
                 <span>Subtotal</span>
                 <span>
                   {formatMoney(sale.subtotal_amount ?? sale.total_amount)}
@@ -119,7 +147,7 @@ export function SaleDetailPage() {
               ) : null}
               {Number(sale.tax_amount) > 0 ? (
                 <div className="flex justify-between">
-                  <span>GST / tax</span>
+                  <span>Tax</span>
                   <span>+{formatMoney(sale.tax_amount)}</span>
                 </div>
               ) : null}
@@ -131,23 +159,31 @@ export function SaleDetailPage() {
               ) : null}
             </div>
           ) : null}
-          <div className="text-xs font-semibold opacity-70">Total</div>
-          <div className="text-3xl font-black">{formatMoney(sale.total_amount)}</div>
           {sale.adjustment_note ? (
-            <div className="mt-2 text-xs opacity-80">{sale.adjustment_note}</div>
+            <p className="mt-2 text-xs opacity-80">{sale.adjustment_note}</p>
           ) : null}
-          <div className="mt-1 text-xs opacity-70">
-            {formatDateTime(sale.created_at)}
-            {sale.created_by_name ? ` · ${sale.created_by_name}` : ''}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
+            <p className="text-[10px] font-bold uppercase text-muted">Items</p>
+            <p className="mt-1 text-lg font-black text-foreground">{units}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
+            <p className="text-[10px] font-bold uppercase text-muted">Payment</p>
+            <p className="mt-1 text-sm font-extrabold text-foreground">
+              {primaryPayment}
+            </p>
           </div>
         </div>
 
         {canReturn ? (
           <Link
             to={`/sales/${sale.id}/return`}
-            className="block rounded-2xl border-2 border-accent py-3 text-center text-sm font-extrabold text-accent transition-colors hover:bg-accent-soft/30"
+            className="flex items-center justify-between rounded-2xl border-2 border-accent bg-accent-soft/30 px-4 py-3.5 text-sm font-extrabold text-accent"
           >
-            Return Items
+            Return items
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         ) : null}
 
@@ -160,15 +196,19 @@ export function SaleDetailPage() {
 
               return (
                 <li key={item.id} className="p-4">
-                  <div className="text-sm font-bold text-foreground">
-                    {item.product_name ?? 'Product'}
-                  </div>
-                  <div className="text-xs text-muted">
-                    {item.quantity} × {formatMoney(item.unit_price)}
-                  </div>
-                  <div className="mt-2 flex justify-between text-sm font-extrabold">
-                    <span className="text-muted">Line total</span>
-                    <span className="text-accent">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-foreground">
+                        {item.product_name ?? 'Product'}
+                      </div>
+                      {item.product_code ? (
+                        <div className="text-xs text-muted">{item.product_code}</div>
+                      ) : null}
+                      <div className="mt-1 text-xs text-muted">
+                        {item.quantity} × {formatMoney(item.unit_price)}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-sm font-black text-accent">
                       {formatMoney(item.total_amount)}
                     </span>
                   </div>
@@ -189,19 +229,23 @@ export function SaleDetailPage() {
         </PortalCard>
 
         <PortalCard title="Payment">
-          <ul className="space-y-2 p-4">
+          <ul className="grid grid-cols-2 gap-2 p-4">
             {sale.payments.length === 0 ? (
-              <li className="text-sm text-muted">Payment not recorded</li>
+              <li className="col-span-2 text-sm text-muted">
+                Payment not recorded
+              </li>
             ) : (
               sale.payments.map((pay) => (
                 <li
                   key={pay.id}
-                  className="flex items-center justify-between text-sm"
+                  className="rounded-xl border border-border bg-accent-soft/30 p-3"
                 >
-                  <span className="text-muted">
+                  <p className="text-[10px] font-bold uppercase text-muted">
                     {PAYMENT_METHOD_LABEL[pay.payment_method]}
-                  </span>
-                  <span className="font-bold">{formatMoney(pay.amount)}</span>
+                  </p>
+                  <p className="mt-1 text-sm font-black text-foreground">
+                    {formatMoney(pay.amount)}
+                  </p>
                 </li>
               ))
             )}
@@ -209,16 +253,18 @@ export function SaleDetailPage() {
         </PortalCard>
 
         {isOwner && totalCost > 0 ? (
-          <div className="rounded-2xl border-2 border-border p-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted">Total Cost</span>
-              <span className="font-bold text-danger">{formatMoney(totalCost)}</span>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border-2 border-border p-4">
+            <div>
+              <p className="text-xs font-bold text-muted">Total cost</p>
+              <p className="text-sm font-black text-danger">
+                {formatMoney(totalCost)}
+              </p>
             </div>
-            <div className="mt-2 flex justify-between font-extrabold">
-              <span className="text-success">Gross Profit</span>
-              <span className="text-success">
+            <div>
+              <p className="text-xs font-bold text-muted">Gross profit</p>
+              <p className="text-sm font-black text-success">
                 +{formatMoney(totalProfit)}
-              </span>
+              </p>
             </div>
           </div>
         ) : null}
@@ -249,13 +295,13 @@ export function SaleDetailPage() {
         ) : null}
       </div>
 
-      <div className="space-y-2 border-t border-border bg-surface p-4">
+      <div className="border-t border-border bg-surface/95 p-4 backdrop-blur">
         <button
           type="button"
           onClick={() => void handlePrint()}
-          className="w-full rounded-2xl border-2 border-accent py-3.5 text-sm font-extrabold text-accent transition-colors hover:bg-accent-soft/30"
+          className="w-full rounded-2xl bg-accent py-3.5 text-sm font-extrabold text-white shadow-md active:bg-violet-700"
         >
-          Print Receipt
+          Print receipt
         </button>
       </div>
     </div>

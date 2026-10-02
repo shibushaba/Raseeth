@@ -3,14 +3,16 @@ import { cn } from '@/lib/utils'
 
 export function StockQuantity({
   quantity,
+  minimumQuantity,
   className,
   size = 'md',
 }: {
   quantity: number
+  minimumQuantity?: number | null
   className?: string
   size?: 'md' | 'lg'
 }) {
-  const level = getStockLevel(quantity)
+  const level = getStockLevel(quantity, minimumQuantity)
   const label = stockLevelLabel(level)
 
   return (

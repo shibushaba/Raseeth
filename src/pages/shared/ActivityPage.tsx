@@ -11,6 +11,29 @@ import { formatTime } from '@/lib/datetime'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
 import { homePathFor } from '@/lib/roles'
 import type { ActivityItem } from '@/types/activity'
+import type { UserRole } from '@/types/database'
+
+function activityPageTitle(role: UserRole | null | undefined): string {
+  switch (role) {
+    case 'SALESMAN':
+      return 'My sales activity'
+    case 'MANAGER':
+      return 'Inventory activity'
+    default:
+      return 'Activity'
+  }
+}
+
+function activityEmptyHint(role: UserRole | null | undefined): string {
+  switch (role) {
+    case 'SALESMAN':
+      return 'Completed sales and returns from the last 7 days will show here.'
+    case 'MANAGER':
+      return 'Stock changes and new products from the last 7 days will show here.'
+    default:
+      return 'Nothing in the last 7 days yet.'
+  }
+}
 
 function typeLabel(type: ActivityItem['type']): string {
   switch (type) {
@@ -65,7 +88,7 @@ export function ActivityPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
       <PortalBackBar
-        title={role === 'SALESMAN' ? 'My Activity' : 'Activity'}
+        title={activityPageTitle(role)}
         onBack={() => navigate(role ? homePathFor(role) : '/')}
       />
 
@@ -96,6 +119,9 @@ export function ActivityPage() {
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted">
             <Activity className="h-8 w-8" aria-hidden />
             <p className="font-semibold">No activity yet</p>
+            <p className="max-w-xs text-center text-xs">
+              {activityEmptyHint(role)}
+            </p>
           </div>
         ) : null}
 
@@ -141,7 +167,11 @@ export function ActivityPage() {
 
         {!activityQuery.isLoading && !activityQuery.error ? (
           <p className="text-center text-xs text-muted">
-            Last 7 days of activity
+            {role === 'SALESMAN'
+              ? 'Last 7 days of your sales'
+              : role === 'MANAGER'
+                ? 'Last 7 days of inventory'
+                : 'Last 7 days of activity'}
           </p>
         ) : null}
       </div>

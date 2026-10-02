@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Receipt } from 'lucide-react'
+import { ChevronRight, Receipt } from 'lucide-react'
 
 import { getSale, getSales } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
@@ -114,21 +114,25 @@ export function SalesHistoryList({
                   <Link
                     key={sale.id}
                     to={`/sales/${sale.id}`}
-                    className="block rounded-2xl border border-border bg-surface p-4 shadow-sm"
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm active:bg-accent-soft/20"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-foreground">
-                          {sale.sale_number}
-                        </div>
-                        <div className="mt-0.5 text-xs text-muted">
-                          {formatTime(sale.created_at)}
-                          {sale.created_by_name ? ` · ${sale.created_by_name}` : ''}
-                        </div>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+                      <Receipt className="h-5 w-5" aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-foreground">
+                        {sale.sale_number}
                       </div>
-                      <div className="font-black text-accent">
+                      <div className="mt-0.5 text-xs text-muted">
+                        {formatTime(sale.created_at)}
+                        {sale.created_by_name ? ` · ${sale.created_by_name}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span className="font-black text-accent">
                         {formatMoney(sale.total_amount)}
-                      </div>
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-muted" aria-hidden />
                     </div>
                   </Link>
                 ),

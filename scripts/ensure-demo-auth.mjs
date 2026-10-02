@@ -35,7 +35,7 @@ const DEMO = [
     password: 'DemoManager123!',
     phone: '9876500003',
     role: 'MANAGER',
-    full_name: 'Demo Manager',
+    full_name: 'Demo Stock Manager',
   },
 ]
 
@@ -125,12 +125,15 @@ if (managerId) {
         .from('profiles')
         .update({ role: 'SALESMAN' })
         .eq('id', salesmanUser.id)
-      await admin.from('shop_members').upsert({
-        shop_id: shopId,
-        profile_id: salesmanUser.id,
-      })
+      const { data: allShops } = await admin.from('shops').select('id')
+      for (const row of allShops ?? []) {
+        await admin.from('shop_members').upsert({
+          shop_id: row.id,
+          profile_id: salesmanUser.id,
+        })
+      }
     }
-    console.log('Assigned Demo Manager to first shop')
+    console.log('Assigned Demo Manager to first shop; salesman to all shops')
   }
 }
 

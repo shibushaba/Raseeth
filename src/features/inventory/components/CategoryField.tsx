@@ -1,61 +1,98 @@
-import { useId, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 
 import { PortalField } from '@/components/ui/portal-field'
 import { PRODUCT_CATEGORY_PRESETS } from '@/lib/product-categories'
 
+const CUSTOM_OPTION = '__custom__'
+
+const BASE_PRESETS = PRODUCT_CATEGORY_PRESETS.filter((c) => c !== 'Other')
+
+function normalizeCategory(value: string): string {
+  return value.trim()
+}
+
 export function CategoryField({
   defaultValue = '',
+  suggestions = [],
 }: {
   defaultValue?: string
+  /** Categories already used in this shop (for quick pick + datalist). */
+  suggestions?: string[]
 }) {
   const listId = useId()
-  const presetValues = PRODUCT_CATEGORY_PRESETS as readonly string[]
-  const initialPreset = presetValues.includes(defaultValue) ? defaultValue : ''
-  const initialCustom =
-    defaultValue && !presetValues.includes(defaultValue) ? defaultValue : ''
+  const initial = normalizeCategory(defaultValue)
 
-  const [preset, setPreset] = useState(initialPreset)
-  const [custom, setCustom] = useState(initialCustom)
+  const dropdownOptions = useMemo(() => {
+    const set = new Set<string>([...BASE_PRESETS, ...suggestions.map(normalizeCategory)])
+    set.delete('')
+    return [...set].sort((a, b) => a.localeCompare(b))
+  }, [suggestions])
 
-  const showCustom = preset === 'Other' || Boolean(initialCustom)
+  const initialIsCustom =
+    initial.length > 0 && !dropdownOptions.includes(initial)
+
+  const [mode, setMode] = useState<'preset' | 'custom'>(() =>
+    initialIsCustom ? 'custom' : 'preset',
+  )
+  const [preset, setPreset] = useState(() =>
+    initialIsCustom ? '' : initial,
+  )
+  const [custom, setCustom] = useState(() =>
+    initialIsCustom ? initial : '',
+  )
+
+  const categoryValue =
+    mode === 'custom' ? normalizeCategory(custom) : normalizeCategory(preset)
+
+  const selectValue =
+    mode === 'custom' ? CUSTOM_OPTION : preset || ''
 
   return (
-    <PortalField label="Category">
+    <PortalField label="Category (optional)">
       <select
-        value={preset || (initialCustom ? 'Other' : '')}
+        value={selectValue}
         onChange={(e) => {
           const next = e.target.value
+          if (next === CUSTOM_OPTION) {
+            setMode('custom')
+            if (!custom && preset) setCustom(preset)
+            return
+          }
+          setMode('preset')
           setPreset(next)
-          if (next !== 'Other') setCustom('')
         }}
         className="w-full rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none focus:border-violet-400"
       >
         <option value="">Select category…</option>
-        {PRODUCT_CATEGORY_PRESETS.map((cat) => (
+        {dropdownOptions.map((cat) => (
           <option key={cat} value={cat}>
             {cat}
           </option>
         ))}
+        <option value={CUSTOM_OPTION}>Custom category…</option>
       </select>
 
-      {showCustom ? (
+      {mode === 'custom' ? (
         <div className="mt-2">
           <input
-            name="category"
-            list={listId}
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
-            placeholder="e.g. Baby Care"
-            required={preset === 'Other'}
+            list={listId}
+            placeholder="Type a new category"
             className="w-full rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none focus:border-violet-400"
+            autoComplete="off"
           />
+          <p className="mt-1 text-xs text-muted">
+            Pick from suggestions or type your own.
+          </p>
         </div>
-      ) : (
-        <input type="hidden" name="category" value={preset} />
-      )}
+      ) : null}
+
+      {/* Single form field — avoids duplicate/missing category on submit */}
+      <input type="hidden" name="category" value={categoryValue} />
 
       <datalist id={listId}>
-        {PRODUCT_CATEGORY_PRESETS.map((cat) => (
+        {dropdownOptions.map((cat) => (
           <option key={cat} value={cat} />
         ))}
       </datalist>

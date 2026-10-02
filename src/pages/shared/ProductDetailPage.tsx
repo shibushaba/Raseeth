@@ -16,6 +16,7 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { EditProductForm } from '@/features/inventory/components/EditProductForm'
 import { MovementHistory } from '@/features/inventory/components/MovementHistory'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
+import { screenPadAboveBottomNav } from '@/lib/layout'
 import { formatMoney, parseMoney } from '@/lib/money'
 import { getStockLevel } from '@/lib/stock'
 import { addStockSchema, adjustStockSchema } from '@/validation/schemas'
@@ -44,10 +45,17 @@ function StatusPill({ level }: { level: ReturnType<typeof getStockLevel> }) {
   )
 }
 
-function StockBar({ stock }: { stock: number }) {
-  const max = Math.max(20, stock * 2)
+function StockBar({
+  stock,
+  minimumQuantity,
+}: {
+  stock: number
+  minimumQuantity?: number | null
+}) {
+  const min = minimumQuantity ?? 20
+  const max = Math.max(min * 2, stock * 2, 1)
   const pct = Math.min(100, (stock / max) * 100)
-  const level = getStockLevel(stock)
+  const level = getStockLevel(stock, minimumQuantity)
   const color =
     level === 'out'
       ? 'bg-red-400'
@@ -176,7 +184,7 @@ export function ProductDetailPage() {
   }
 
   const product = productQuery.data
-  const level = getStockLevel(product.current_quantity)
+  const level = getStockLevel(product.current_quantity, product.minimum_quantity)
   const retail = parseMoney(product.retail_price)
   const wholesale = parseMoney(product.wholesale_price)
   const profit = retail - wholesale
@@ -347,7 +355,7 @@ export function ProductDetailPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col" style={screenPadAboveBottomNav}>
       <PortalBackBar
         title="Product Details"
         subtitle={product.product_code}
@@ -381,9 +389,15 @@ export function ProductDetailPage() {
                 {product.current_quantity}
                 <span className="ml-1 text-sm font-semibold text-muted">units</span>
               </div>
+              <div className="mt-1 text-xs font-semibold text-muted">
+                Alert at or below {product.minimum_quantity ?? 5} units
+              </div>
             </div>
           </div>
-          <StockBar stock={product.current_quantity} />
+          <StockBar
+            stock={product.current_quantity}
+            minimumQuantity={product.minimum_quantity}
+          />
         </div>
 
         <PortalCard title="Pricing">

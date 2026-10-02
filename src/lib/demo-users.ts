@@ -18,7 +18,7 @@ export const DEMO_PERSONAS: DemoPersonaConfig[] = [
   {
     id: 'owner',
     title: 'Owner',
-    subtitle: 'All shops, revenue & managers',
+    subtitle: 'All shops, staff & performance',
     email: 'owner@raseeth.demo',
     phone: '9876500001',
     password: 'DemoOwner123!',
@@ -27,8 +27,8 @@ export const DEMO_PERSONAS: DemoPersonaConfig[] = [
   },
   {
     id: 'cashier',
-    title: 'Cashier',
-    subtitle: 'POS & recent sales',
+    title: 'Salesman',
+    subtitle: 'POS and today sales',
     email: 'salesman@raseeth.demo',
     phone: '9876500002',
     password: 'DemoSalesman123!',
@@ -37,8 +37,8 @@ export const DEMO_PERSONAS: DemoPersonaConfig[] = [
   },
   {
     id: 'manager',
-    title: 'Manager',
-    subtitle: 'Run your shop — sales, stock & trends',
+    title: 'Stock manager',
+    subtitle: 'Inventory, products & stock for your shop',
     email: 'manager@raseeth.demo',
     phone: '9876500003',
     password: 'DemoManager123!',

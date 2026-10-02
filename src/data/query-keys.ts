@@ -1,7 +1,8 @@
 export const queryKeys = {
   products: {
     all: ['products'] as const,
-    list: (search: string) => ['products', 'list', search] as const,
+    list: (search: string, shopScopeKey = 'all') =>
+      ['products', 'list', search, shopScopeKey] as const,
     detail: (id: string) => ['products', 'detail', id] as const,
   },
   inventoryHistory: {
@@ -56,6 +57,7 @@ export const queryKeys = {
   shops: {
     all: ['shops'] as const,
     mine: ['shops', 'mine'] as const,
+    accessible: ['shops', 'accessible'] as const,
     detail: (id: string) => ['shops', 'detail', id] as const,
     network: (rangeKey: string) => ['shops', 'network', rangeKey] as const,
   },

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Check, ShoppingCart, X } from 'lucide-react'
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { PortalHeader } from '@/components/layout/portal/PortalHeader'
@@ -9,6 +9,7 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { createSale, getProducts } from '@/data/api'
 import { queryKeys } from '@/data/query-keys'
 import { useShopScope } from '@/features/shop/useShopScope'
+import { productMatchesShopScope } from '@/lib/product-shop-scope'
 import {
   productToCartSeed,
   unitPriceForType,
@@ -26,6 +27,7 @@ import { PosRecentSales } from '@/features/sales/components/PosRecentSales'
 import { SaleAdjustmentsPanel } from '@/features/sales/components/SaleAdjustmentsPanel'
 import { localDayBounds } from '@/lib/datetime'
 import { logTechnicalError, toUserMessage } from '@/lib/errors'
+import { BOTTOM_NAV_OFFSET, screenPadAboveBottomNav } from '@/lib/layout'
 import { formatMoney, lineTotal, sumCartTotal, toMoneyString } from '@/lib/money'
 import { uniqueCategories } from '@/lib/product-categories'
 import { printSaleReceipt } from '@/lib/print-sale-receipt'
@@ -42,8 +44,7 @@ import { createSaleSchema } from '@/validation/schemas'
 type PosScreen = 'browse' | 'cart' | 'payment' | 'receipt'
 type BrowseTab = 'products' | 'sales'
 
-const DOCK_ABOVE_NAV =
-  'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px))'
+const DOCK_ABOVE_NAV = BOTTOM_NAV_OFFSET
 
 /** Room for cart dock (scrollable lines + checkout button) above bottom nav. */
 const BROWSE_SCROLL_PAD_WITH_CART =
@@ -187,8 +188,14 @@ function cartTotal(cart: CartItem[]) {
 
 export function PosScreen() {
   const queryClient = useQueryClient()
-  const { profile, signOut } = useAuth()
-  const { shopId } = useShopScope()
+  const { profile, signOut, role } = useAuth()
+  const {
+    shopId,
+    productShopScope,
+    productScopeKey,
+    accessibleShopIds,
+    shopsScopeLoading,
+  } = useShopScope()
   const [screen, setScreen] = useState<PosScreen>('browse')
   const [browseTab, setBrowseTab] = useState<BrowseTab>('products')
   const [search, setSearch] = useState('')
@@ -196,6 +203,7 @@ export function PosScreen() {
   const deferredSearch = useDeferredValue(search.trim())
   const [cart, setCart] = useState<CartItem[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [checkingSale, setCheckingSale] = useState(false)
   const [completed, setCompleted] = useState<CompletedSale | null>(null)
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('UPI')
   const [splitRows, setSplitRows] = useState<SplitPaymentRow[]>([
@@ -207,9 +215,22 @@ export function PosScreen() {
   )
 
   const productsQuery = useQuery({
-    queryKey: [...queryKeys.products.list(deferredSearch), shopId ?? 'all'],
-    queryFn: () => getProducts(deferredSearch, shopId),
+    queryKey: queryKeys.products.list(deferredSearch, productScopeKey),
+    queryFn: () => getProducts(deferredSearch, productShopScope),
+    enabled:
+      role === 'OWNER'
+        ? !shopsScopeLoading
+        : !shopsScopeLoading &&
+          (accessibleShopIds.length > 0 ||
+            Boolean(shopId) ||
+            productScopeKey === 'all'),
   })
+
+  useEffect(() => {
+    if (shopsScopeLoading) return
+    setCart([])
+    setError(null)
+  }, [productScopeKey, shopsScopeLoading])
 
   const allProducts = productsQuery.data ?? []
   const categories = useMemo(
@@ -297,10 +318,20 @@ export function PosScreen() {
   })
 
   const canComplete =
-    cart.length > 0 && !cartInvalid && payCheck.valid && !mutation.isPending
+    cart.length > 0 &&
+    !cartInvalid &&
+    payCheck.valid &&
+    !mutation.isPending &&
+    !checkingSale
 
   function addProduct(product: Product) {
     setError(null)
+    if (!productMatchesShopScope(product.shop_id, productShopScope)) {
+      setError(
+        'That product belongs to another shop. Clear your cart and refresh the product list.',
+      )
+      return
+    }
     setCart((prev) => {
       const existing = prev.find((i) => i.product_id === product.id)
       if (existing) {
@@ -345,19 +376,58 @@ export function PosScreen() {
     )
   }
 
-  function completeSale() {
+  async function completeSale() {
     setError(null)
+    setCheckingSale(true)
+    const scope = productShopScope
+    if (
+      scope != null &&
+      typeof scope !== 'string' &&
+      Array.isArray(scope) &&
+      scope.length === 0
+    ) {
+      setError('Your shop is still loading. Wait a moment and try again.')
+      setCheckingSale(false)
+      return
+    }
+    let liveProducts = allProducts
+    try {
+      liveProducts = await getProducts(deferredSearch, scope)
+    } catch {
+      /* validate against cached list */
+    }
+    const productById = new Map(liveProducts.map((p) => [p.id, p]))
+    let saleShopId: string | null = null
     for (const item of cart) {
-      if (item.quantity > item.available_stock) {
+      const live = productById.get(item.product_id)
+      if (!live || !productMatchesShopScope(live.shop_id, scope)) {
         setError(
-          `Not enough ${item.name} in stock. Available: ${item.available_stock}.`,
+          'Your cart has products from another shop. Go back, clear the cart, and add items again.',
         )
+        setCheckingSale(false)
+        return
+      }
+      if (saleShopId === null) {
+        saleShopId = live.shop_id
+      } else if (live.shop_id !== saleShopId) {
+        setError(
+          'Your cart mixes products from different shops. Remove items so everything is from one shop.',
+        )
+        setCheckingSale(false)
+        return
+      }
+      if (item.quantity > live.current_quantity) {
+        setError(
+          `Not enough ${item.name} in stock. Available: ${live.current_quantity}.`,
+        )
+        setCheckingSale(false)
         return
       }
     }
     const status = paymentStatus(paymentMode, grandTotal, splitRows)
     if (!status.valid) {
       setError(status.message)
+      setCheckingSale(false)
       return
     }
     const apiAdjustments = adjustmentsForApi(pricing)
@@ -379,8 +449,10 @@ export function PosScreen() {
     const parsed = createSaleSchema.safeParse(payload)
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Payment is invalid.')
+      setCheckingSale(false)
       return
     }
+    setCheckingSale(false)
     mutation.mutate(parsed.data)
   }
 
@@ -388,6 +460,10 @@ export function PosScreen() {
 
   if (screen === 'receipt' && completed) {
     const paid = completed.payments.reduce((a, p) => a + p.amount, 0)
+    const unitsSold = completed.receiptItems.reduce((s, i) => s + i.quantity, 0)
+    const paymentLabel = completed.payments
+      .map((p) => PAYMENT_METHOD_LABEL[p.method])
+      .join(' · ')
 
     async function handlePrint() {
       const ok = await printSaleReceipt({
@@ -405,124 +481,145 @@ export function PosScreen() {
     }
 
     return (
-      <div className="flex min-h-dvh flex-col bg-success-soft">
-        <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto p-6">
-          <div className="mt-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500">
-            <Check className="h-10 w-10 text-white" aria-hidden />
-          </div>
-          <div className="text-center">
-            <h2 className="text-2xl font-black text-emerald-700">
-              Payment Successful!
+      <div
+        className="flex min-h-dvh flex-col bg-gradient-to-b from-emerald-50/90 to-background"
+        style={screenPadAboveBottomNav}
+      >
+        <div className="flex-1 overflow-y-auto px-4 pb-4 pt-10">
+          <div className="mx-auto flex w-full max-w-sm flex-col items-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30 ring-4 ring-emerald-100">
+              <Check className="h-8 w-8 text-white" aria-hidden />
+            </div>
+            <h2 className="mt-4 text-2xl font-black text-emerald-800">
+              Payment successful
             </h2>
-            <p className="mt-1 text-sm font-medium text-muted">
+            <p className="mt-1 font-mono text-sm font-bold text-muted">
               {completed.sale_number}
             </p>
-          </div>
+            <p className="mt-0.5 text-xs text-muted">
+              {new Date(completed.created_at).toLocaleString('en-IN')}
+            </p>
 
-          <div className="w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-            <div className="bg-accent px-5 py-4 text-white">
-              <div className="text-xs font-semibold opacity-70">Receipt</div>
-              <div className="mt-0.5 text-xs opacity-60">
-                {new Date(completed.created_at).toLocaleString('en-IN')}
+            <div className="mt-6 grid w-full grid-cols-2 gap-2">
+              <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+                  Collected
+                </p>
+                <p className="mt-1 text-lg font-black text-accent">
+                  {formatMoney(completed.total_amount)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+                  Items sold
+                </p>
+                <p className="mt-1 text-lg font-black text-foreground">
+                  {unitsSold}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+                  Payment
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-foreground">
+                  {paymentLabel}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+                  Paid
+                </p>
+                <p className="mt-1 text-lg font-black text-foreground">
+                  {formatMoney(paid)}
+                </p>
               </div>
             </div>
-            <div className="space-y-4 p-4">
-              {completed.receiptItems.map((item) => (
-                <div
-                  key={item.product_code}
-                  className="border-b border-dashed border-border pb-3 last:border-0 last:pb-0"
-                >
-                  <div className="text-sm font-bold text-foreground">
-                    {item.name}
-                  </div>
-                  <div className="mb-1 text-xs text-muted">
-                    Qty: {item.quantity} × {formatMoney(item.unit_price)}
-                  </div>
-                  <div className="flex justify-between text-sm font-extrabold text-foreground">
-                    <span>Final</span>
-                    <span className="text-accent">
+
+            <div className="mt-4 w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+              <div className="border-b border-border bg-accent-soft/50 px-4 py-2.5">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-accent">
+                  Line items
+                </p>
+              </div>
+              <ul className="divide-y divide-border">
+                {completed.receiptItems.map((item) => (
+                  <li
+                    key={item.product_code}
+                    className="flex items-start justify-between gap-3 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-foreground">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {item.quantity} × {formatMoney(item.unit_price)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-black text-accent">
                       {formatMoney(item.line_total)}
                     </span>
+                  </li>
+                ))}
+              </ul>
+              {completed.pricing &&
+              (completed.pricing.discount > 0 ||
+                completed.pricing.tax > 0 ||
+                completed.pricing.other > 0) ? (
+                <div className="space-y-1 border-t border-dashed border-border px-4 py-3 text-sm text-muted">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>{formatMoney(completed.pricing.subtotal)}</span>
                   </div>
-                </div>
-              ))}
-              <div className="space-y-1 border-t-2 border-dashed border-border pt-3">
-                {completed.pricing &&
-                (completed.pricing.discount > 0 ||
-                  completed.pricing.tax > 0 ||
-                  completed.pricing.other > 0) ? (
-                  <>
-                    <div className="flex justify-between text-sm text-muted">
-                      <span>Subtotal</span>
-                      <span>{formatMoney(completed.pricing.subtotal)}</span>
+                  {completed.pricing.discount > 0 ? (
+                    <div className="flex justify-between text-emerald-600">
+                      <span>Discount</span>
+                      <span>−{formatMoney(completed.pricing.discount)}</span>
                     </div>
-                    {completed.pricing.discount > 0 ? (
-                      <div className="flex justify-between text-sm text-emerald-600">
-                        <span>Discount</span>
-                        <span>−{formatMoney(completed.pricing.discount)}</span>
-                      </div>
-                    ) : null}
-                    {completed.pricing.tax > 0 ? (
-                      <div className="flex justify-between text-sm text-muted">
-                        <span>GST / tax</span>
-                        <span>+{formatMoney(completed.pricing.tax)}</span>
-                      </div>
-                    ) : null}
-                    {completed.pricing.other > 0 ? (
-                      <div className="flex justify-between text-sm text-muted">
-                        <span>Other</span>
-                        <span>+{formatMoney(completed.pricing.other)}</span>
-                      </div>
-                    ) : null}
-                  </>
-                ) : null}
-                <div className="flex justify-between">
-                  <span className="font-extrabold text-foreground">Total</span>
-                  <span className="text-lg font-black text-accent">
-                    {formatMoney(completed.total_amount)}
-                  </span>
+                  ) : null}
+                  {completed.pricing.tax > 0 ? (
+                    <div className="flex justify-between">
+                      <span>Tax</span>
+                      <span>+{formatMoney(completed.pricing.tax)}</span>
+                    </div>
+                  ) : null}
+                  {completed.pricing.other > 0 ? (
+                    <div className="flex justify-between">
+                      <span>Other</span>
+                      <span>+{formatMoney(completed.pricing.other)}</span>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="flex justify-between text-sm text-muted">
-                  <span>Payment</span>
-                  <span className="text-xs font-bold">
-                    {completed.payments
-                      .map((p) => PAYMENT_METHOD_LABEL[p.method])
-                      .join(', ')}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm text-muted">
-                  <span>Paid</span>
-                  <span className="font-bold">{formatMoney(paid)}</span>
-                </div>
-              </div>
+              ) : null}
             </div>
           </div>
         </div>
 
-        <div className="space-y-2 border-t border-border bg-surface p-4">
-          <button
-            type="button"
-            onClick={() => void handlePrint()}
-            className="w-full rounded-2xl border-2 border-accent py-3.5 text-sm font-extrabold text-accent"
-          >
-            Print Receipt
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCompleted(null)
-              setScreen('browse')
-              mutation.reset()
-            }}
-            className="w-full rounded-2xl bg-accent py-3.5 text-sm font-extrabold text-white active:bg-violet-700"
-          >
-            New Sale
-          </button>
+        <div className="border-t border-border bg-surface/95 p-4 backdrop-blur">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => void handlePrint()}
+              className="rounded-2xl border-2 border-accent py-3.5 text-sm font-extrabold text-accent"
+            >
+              Print
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCompleted(null)
+                setScreen('browse')
+                mutation.reset()
+              }}
+              className="rounded-2xl bg-accent py-3.5 text-sm font-extrabold text-white active:bg-violet-700"
+            >
+              New sale
+            </button>
+          </div>
           <Link
             to={`/sales/${completed.id}`}
-            className="block w-full rounded-2xl py-3 text-center text-sm font-bold text-accent"
+            className="mt-2 block w-full rounded-2xl py-2.5 text-center text-sm font-bold text-accent"
           >
-            View sale details
+            View full receipt
           </Link>
         </div>
       </div>
@@ -531,7 +628,7 @@ export function PosScreen() {
 
   if (screen === 'payment') {
     return (
-      <div className="flex min-h-dvh flex-col">
+      <div className="flex min-h-dvh flex-col" style={screenPadAboveBottomNav}>
         <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
           <button
             type="button"
@@ -569,7 +666,7 @@ export function PosScreen() {
             onClick={completeSale}
             className="w-full rounded-2xl bg-emerald-500 py-4 text-base font-extrabold text-white shadow-md active:bg-emerald-600 disabled:opacity-40"
           >
-            {mutation.isPending
+            {checkingSale || mutation.isPending
               ? 'Processing…'
               : `Confirm Payment · ${formatMoney(grandTotal)}`}
           </button>
@@ -580,7 +677,7 @@ export function PosScreen() {
 
   if (screen === 'cart') {
     return (
-      <div className="flex min-h-dvh flex-col">
+      <div className="flex min-h-dvh flex-col" style={screenPadAboveBottomNav}>
         <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
           <button
             type="button"

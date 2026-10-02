@@ -34,6 +34,7 @@ export const createProductSchema = z.object({
   retail_price: moneySchema,
   wholesale_price: moneySchema,
   initial_quantity: z.coerce.number().int().min(0),
+  minimum_quantity: z.coerce.number().int().min(0, 'Minimum quantity cannot be negative'),
 })
 
 export const updateProductSchema = createProductSchema.omit({

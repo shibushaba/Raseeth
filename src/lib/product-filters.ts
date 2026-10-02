@@ -33,7 +33,7 @@ export function filterProductsByStock(
 ): Product[] {
   if (filter === 'all') return products
   return products.filter((p) => {
-    const level = getStockLevel(p.current_quantity)
+    const level = getStockLevel(p.current_quantity, p.minimum_quantity)
     if (filter === 'in_stock') return level === 'ok'
     if (filter === 'low_stock') return level === 'low'
     return level === 'out'

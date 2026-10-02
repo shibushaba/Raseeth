@@ -18,39 +18,39 @@ export const OWNER_PERMISSIONS = {
   canViewProducts: true,
 } as const
 
-/** Shop manager — full operational control for their assigned shop. */
+/** Stock manager — inventory for their assigned shop only. */
 export const MANAGER_PERMISSIONS = {
   canCreateProduct: true,
   canEditProduct: true,
   canDeleteProduct: true,
   canAddInventory: true,
   canAdjustInventory: true,
-  canCreateSale: true,
-  canCreateReturn: true,
+  canCreateSale: false,
+  canCreateReturn: false,
   canEditSale: false,
   canDeleteSale: false,
   canChangePrices: true,
   canSendMessages: true,
-  canViewSales: true,
+  canViewSales: false,
   canViewInventory: true,
   canViewProducts: true,
 } as const
 
-/** Cashier / floor salesman — POS and stock for their shop. */
+/** Salesman — POS and returns for their shop only. */
 export const SALESMAN_PERMISSIONS = {
-  canCreateProduct: true,
-  canEditProduct: true,
-  canDeleteProduct: true,
-  canAddInventory: true,
-  canAdjustInventory: true,
+  canCreateProduct: false,
+  canEditProduct: false,
+  canDeleteProduct: false,
+  canAddInventory: false,
+  canAdjustInventory: false,
   canCreateSale: true,
   canCreateReturn: true,
   canEditSale: false,
   canDeleteSale: false,
-  canChangePrices: true,
+  canChangePrices: false,
   canSendMessages: true,
   canViewSales: true,
-  canViewInventory: true,
+  canViewInventory: false,
   canViewProducts: true,
 } as const
 
@@ -73,6 +73,11 @@ export function isManager(role: UserRole | null | undefined): boolean {
   return role === 'MANAGER'
 }
 
+/** Stock / inventory manager (MANAGER role in the database). */
+export function isStockManager(role: UserRole | null | undefined): boolean {
+  return role === 'MANAGER'
+}
+
 export function isSalesman(role: UserRole | null | undefined): boolean {
   return role === 'SALESMAN'
 }
@@ -87,7 +92,6 @@ function operatorNav(): NavItem[] {
   return [
     { label: 'Home', to: '/home', primary: true },
     { label: 'Sales', to: '/sales', primary: true },
-    { label: 'Inventory', to: '/inventory', primary: true },
     { label: 'Activity', to: '/activity' },
     { label: 'Messages', to: '/messages' },
     { label: 'Settings', to: '/settings' },
@@ -111,9 +115,7 @@ export function desktopNavItemsFor(role: UserRole): NavItem[] {
   if (role === 'MANAGER') {
     return [
       { label: 'Home', to: '/manager/home', primary: true },
-      { label: 'Sales', to: '/sales', primary: true },
       { label: 'Inventory', to: '/inventory', primary: true },
-      { label: 'Team', to: '/team', primary: true },
       { label: 'Activity', to: '/activity' },
       { label: 'Messages', to: '/messages' },
       { label: 'Settings', to: '/settings' },

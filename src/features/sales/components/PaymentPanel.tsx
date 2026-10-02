@@ -71,7 +71,7 @@ export function PaymentPanel({
 
       <fieldset>
         <legend className="eyebrow px-1">Payment method</legend>
-        <div className="mt-2 space-y-2">
+        <div className="mt-2 grid grid-cols-2 gap-2">
           {(
             ['CASH', 'UPI', 'CARD', 'SPLIT'] as const
           ).map((value) => {
@@ -82,7 +82,7 @@ export function PaymentPanel({
               <label
                 key={value}
                 className={cn(
-                  'flex min-h-[52px] cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 transition-all',
+                  'relative flex min-h-[6.5rem] cursor-pointer flex-col gap-2 rounded-2xl border-2 p-3 transition-all',
                   selected
                     ? 'border-accent bg-accent-soft/60'
                     : 'border-border bg-surface hover:bg-accent-soft/30',
@@ -96,23 +96,25 @@ export function PaymentPanel({
                   onChange={() => onModeChange(value)}
                   className="sr-only"
                 />
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
-                  <Icon className="h-5 w-5" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold text-foreground">{meta.label}</div>
-                  <div className="text-xs font-medium text-muted">
-                    {meta.desc}
-                  </div>
-                </div>
                 {selected ? (
                   <span
-                    className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-white"
+                    className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-white"
                     aria-hidden
                   >
                     ✓
                   </span>
                 ) : null}
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-soft text-accent">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-bold text-foreground">
+                    {meta.label}
+                  </div>
+                  <div className="mt-0.5 text-[11px] font-medium leading-snug text-muted">
+                    {meta.desc}
+                  </div>
+                </div>
               </label>
             )
           })}
